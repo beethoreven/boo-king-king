@@ -1,0 +1,6 @@
+[submodule "booking-king-backend"]
+	path = booking-king-backend
+	url = ./booking-king-backend
+[submodule "booking-king-web"]
+	path = booking-king-web
+	url = ./booking-king-web
