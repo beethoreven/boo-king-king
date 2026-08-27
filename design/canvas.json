@@ -1,0 +1,30 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "預約畫面" },
+    { "id": "page-2", "name": "原始方向（參考）" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 390, "h": 900, "page": "page-1", "is_interactive": true },
+    { "file": "NightTheatre.dc.html", "x": 0, "y": 0, "w": 390, "h": 900, "page": "page-2" },
+    { "file": "BrightTool.dc.html", "x": 510, "y": 0, "w": 390, "h": 900, "page": "page-2" }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -230,
+      "w": 470,
+      "text": "劇本詳情 ＋ 預約\nC 的結構（圓角、標籤、字體、進度條）＋ B 的配色（深底、黃銅）。\n手機尺寸 390×844。\n\n這個畫面是真的可以互動的：上方「請選擇劇本」是真的下拉選單，\n選了「竊雲台」之後，下面所有內容才會出現。試試看實際選選看。\n\n場次選單的設計還要再討論。",
+      "page": "page-1"
+    },
+    {
+      "id": "note-ref",
+      "x": 0,
+      "y": -150,
+      "w": 470,
+      "text": "這兩個是原始的 B 和 C，留著方便對照配色與結構的來源。\n定案後可以刪掉。",
+      "page": "page-2"
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

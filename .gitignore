@@ -1,0 +1,7 @@
+
+# 設計畫布的產出檔：2.4MB，內含整個編輯器，每次重新產生都會整份變動。
+# 來源是同目錄的 *.dc.html 與 canvas.json，隨時可以重新產生，不進版控。
+design/booking-king-screens.html
+
+# 跨 session 溝通用的臨時文件（報告、提案、討論稿）。
+scratch/
