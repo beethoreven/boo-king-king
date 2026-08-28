@@ -1,28 +1,32 @@
 {
   "pages": [
-    { "id": "page-1", "name": "預約畫面" },
-    { "id": "page-2", "name": "原始方向（參考）" }
+    { "id": "page-1", "name": "當前畫面" },
+    { "id": "page-2", "name": "最初草稿（參考）" }
   ],
   "artboards": [
-    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 390, "h": 900, "page": "page-1", "is_interactive": true },
-    { "file": "NightTheatre.dc.html", "x": 0, "y": 0, "w": 390, "h": 900, "page": "page-2" },
-    { "file": "BrightTool.dc.html", "x": 510, "y": 0, "w": 390, "h": 900, "page": "page-2" }
+    { "file": "Main.dc.html",  "x": 0,   "y": 0, "w": 390, "h": 900, "page": "page-1", "title": "預約畫面" },
+    { "file": "Host.dc.html",  "x": 480, "y": 0, "w": 390, "h": 620, "page": "page-1", "title": "主持人介面" },
+    { "file": "Admin.dc.html", "x": 960, "y": 0, "w": 390, "h": 560, "page": "page-1", "title": "管理員介面" },
+
+    { "file": "NightTheatre.dc.html", "x": 0,   "y": 0, "w": 390, "h": 900, "page": "page-2" },
+    { "file": "BrightTool.dc.html",   "x": 480, "y": 0, "w": 390, "h": 900, "page": "page-2" },
+    { "file": "FirstDraft.dc.html",   "x": 960, "y": 0, "w": 390, "h": 900, "page": "page-2", "title": "最初的預約稿" }
   ],
   "annotations": [
     {
-      "id": "brief",
+      "id": "current",
       "x": 0,
-      "y": -230,
-      "w": 470,
-      "text": "劇本詳情 ＋ 預約\nC 的結構（圓角、標籤、字體、進度條）＋ B 的配色（深底、黃銅）。\n手機尺寸 390×844。\n\n這個畫面是真的可以互動的：上方「請選擇劇本」是真的下拉選單，\n選了「竊雲台」之後，下面所有內容才會出現。試試看實際選選看。\n\n場次選單的設計還要再討論。",
+      "y": -210,
+      "w": 520,
+      "text": "這三個畫板是「現在實際跑起來長的樣子」，不是構想稿。\n樣式直接從 booking-king-web/style.css 內嵌產生，所以顏色、間距、圓角、字級都跟實作一致。\n\n要改版面就直接在畫板上搬——搬完告訴我，我照著改實作。\n\n重新產生：node design/build-artboards.mjs",
       "page": "page-1"
     },
     {
-      "id": "note-ref",
+      "id": "drafts",
       "x": 0,
       "y": -150,
-      "w": 470,
-      "text": "這兩個是原始的 B 和 C，留著方便對照配色與結構的來源。\n定案後可以刪掉。",
+      "w": 520,
+      "text": "最初的三張草稿，留著對照配色與結構的來源。\n「最初的預約稿」是實作前的構想，跟現在已經差很多（那時還叫 Booking King、日期是單一欄位）。",
       "page": "page-2"
     }
   ],

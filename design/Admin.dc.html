@@ -1,0 +1,541 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>管理員介面</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
+  <style>
+/*
+ * 設計 token 與共用元件樣式。
+ *
+ * 配色來自設計稿定案的方向：深色底 + 黃銅色點綴（C 的結構 + B 的配色）。
+ * 所有顏色一律走這裡的變數，不要在別處寫死色碼——之後要調色只改這一區。
+ */
+
+:root {
+  --bg: #14120f;
+  --surface: #1e1b17;      /* 卡片、彈起的區塊 */
+  --surface-2: #1a1713;    /* 輸入框等比背景略亮一階的表面 */
+  --border: #332d24;
+  --border-soft: #2a251e;
+
+  --ink: #ede8e0;
+  --ink-soft: #a79c8e;
+  --ink-faint: #8a8177;
+  --ink-disabled: #5c564c;
+
+  --accent: #c8975a;
+  --accent-soft: #2a2318;  /* 標籤底色 */
+  --on-accent: #14120f;
+
+  --danger: #d9705a;
+  --danger-soft: #2e1c17;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --pad: 18px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Noto Sans TC", system-ui, -apple-system, sans-serif;
+  /* iOS Safari 在輸入框聚焦時，字體小於 16px 會自動放大整個頁面。
+     這裡把基準設在 16px，輸入框也不低於它。 */
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+a { color: var(--accent); }
+a:hover { color: #e0b478; }
+
+/* ── 版面 ───────────────────────────────────────────────── */
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px var(--pad);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.topbar__actions { display: flex; align-items: center; gap: 8px; }
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px var(--pad) 0;
+}
+
+.section__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+
+.spacer { flex-grow: 1; }
+
+/* ── 表單控制項 ─────────────────────────────────────────── */
+
+.field { display: flex; flex-direction: column; gap: 5px; }
+
+.field__label { font-size: 12px; color: var(--ink-faint); }
+
+.field__hint {
+  font-size: 12px;
+  color: var(--ink-faint);
+  min-height: 16px;
+}
+
+/* 破壞性操作的常駐警語（例如改 email 會影響登入） */
+.field__warn { font-size: 12px; color: var(--danger); }
+
+.select-wrap { position: relative; }
+
+.select-wrap::after {
+  content: "";
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+.select-wrap--disabled::after { border-color: var(--ink-disabled); }
+
+select, input[type="text"], input[type="number"], input[type="date"],
+input[type="time"], input[type="email"], textarea {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 40px 12px 18px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  font-family: inherit;
+}
+
+input[type="text"], input[type="number"], input[type="email"],
+input[type="date"], input[type="time"], textarea {
+  padding-right: 18px;
+}
+
+select:disabled, input:disabled, textarea:disabled {
+  color: var(--ink-disabled);
+  background: #17140f;
+  cursor: not-allowed;
+}
+
+select option { background: var(--surface); color: var(--ink); }
+
+/* 錯誤狀態：紅框 + 欄位右側的驚嘆號 */
+.field--error select,
+.field--error input,
+.field--error textarea { border-color: var(--danger); }
+
+.field__error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+/* ── 按鈕 ───────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: var(--radius);
+  padding: 15px 18px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn--primary { background: var(--accent); color: var(--on-accent); }
+.btn--primary:disabled { background: #4a4034; color: var(--ink-disabled); cursor: not-allowed; }
+
+.btn--ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--ink-soft);
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn--small { padding: 8px 12px; font-size: 13px; font-weight: 500; }
+
+/* ── 標籤 ───────────────────────────────────────────────── */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 6px 13px;
+  border-radius: var(--radius-sm);
+}
+
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── 卡片與清單 ─────────────────────────────────────────── */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+}
+
+.card--flat { background: var(--surface-2); }
+
+.list { display: flex; flex-direction: column; gap: 8px; }
+
+/* ── 頁籤 ───────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 var(--pad);
+  border-bottom: 1px solid var(--border-soft);
+  overflow-x: auto;
+}
+
+.tab {
+  flex: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-faint);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 12px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab--active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── 狀態訊息 ───────────────────────────────────────────── */
+
+.empty, .loading {
+  padding: 40px var(--pad);
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 14px;
+}
+
+/* ── Toast ──────────────────────────────────────────────── */
+
+.toast-layer {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+  width: calc(100% - 36px);
+  max-width: 420px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 13px 18px;
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: toast-in 0.18s ease-out;
+}
+
+.toast--error { border-color: var(--danger); color: var(--danger); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── 對話框 ─────────────────────────────────────────────── */
+
+.modal-layer {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 200;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal__title { font-size: 16px; font-weight: 700; }
+/* 對話框內文常常是多行（缺漏項目清單、預定者資料、主持人名單），
+   內容是用 \n 串起來的純文字，沒有這行就會全部摺成一行。 */
+.modal__body {
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.7;
+  white-space: pre-line;
+}
+.modal__actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
+
+/* ── 清單項目（主持人／管理員介面共用） ─────────────────── */
+
+.list-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.list-item__main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.list-item__title { font-size: 15px; font-weight: 700; }
+.list-item__meta { font-size: 13px; color: var(--ink-soft); }
+
+.list-item__links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.list-item__side { flex: none; display: flex; align-items: center; }
+
+.sep { color: var(--ink-disabled); }
+
+/* 看起來像連結、實際是按鈕——可點擊的東西要是 button，
+   鍵盤與螢幕閱讀器才操作得到。 */
+.linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.linklike:hover { color: #e0b478; }
+
+.status-chip {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.toolbar { flex-direction: row; align-items: center; gap: 10px; }
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pager__label { font-size: 12px; color: var(--ink-faint); }
+
+/* 已確認的列在畫面上變暗、不可再操作 */
+.list-item--done { opacity: 0.55; }
+
+/* 標籤上的移除鍵（主持人名單） */
+.tag__remove {
+  background: none;
+  border: none;
+  padding: 0 0 0 2px;
+  color: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.tag__remove:hover { opacity: 1; }
+
+/* 勾選欄（是否已確認） */
+.checkline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.checkline input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.checkline input:disabled { cursor: not-allowed; opacity: 0.4; }
+
+textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
+
+/* ── 日期時間輸入 ───────────────────────────────────────── */
+
+/* hidden 屬性靠 UA 樣式的 display:none 生效，特異性低於 .section 的
+   display:flex，會被蓋掉。用 JS 的 .hidden 控制顯示就必須補這一條。 */
+[hidden] { display: none !important; }
+
+/* 上排：日曆選擇器與時／分下拉。只是輸入輔助，真正的值在下排。 */
+.picker-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.picker-row .date-picker { flex: 1; min-width: 0; }
+.picker-row .select-wrap { flex-shrink: 0; }
+
+.time-select {
+  width: auto;
+  padding: 12px 32px 12px 10px;
+}
+
+/* 下排：五個獨立數字欄位，這才是送出時讀的來源。
+   刻意做成普通的 number 輸入——沒有「區段」的概念，
+   所以不會像 <input type="date"> 那樣打到一半被打斷。
+
+   ★ 選擇器要寫成 .dt-row input.dt-input，不能只寫 .dt-input：
+     上面的基礎規則 input[type="number"] 特異性是 (0,1,1)，只用一個
+     class 是 (0,1,0)，會輸給它——內距與寬度都蓋不掉，placeholder
+     會被 18px 的左右內距擠到裁切。這裡用 (0,2,1) 確保贏。 */
+.dt-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 2px;
+}
+
+.dt-row input.dt-input {
+  width: auto;
+  flex: none;
+  text-align: center;
+  padding: 12px 2px;
+  -moz-appearance: textfield;
+  min-width: 0;
+}
+
+/* 數字欄位的上下箭頭在這種窄欄位裡只會擋到字 */
+.dt-row input.dt-input::-webkit-outer-spin-button,
+.dt-row input.dt-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.dt-row input.dt-input--year { width: 64px; }
+.dt-row input.dt-input--short { width: 42px; }
+
+.dt-unit {
+  color: var(--ink-faint);
+  font-size: 13px;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+  </style>
+</helmet>
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="topbar__brand"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>步經徑</div>
+    <div class="topbar__actions">
+      <button class="btn btn--ghost btn--small">回到預約</button>
+      <button class="btn btn--ghost btn--small">登出</button>
+    </div>
+  </div>
+  <div class="view">
+    <div class="tabs">
+      <button class="tab tab--active">劇本管理</button>
+      <button class="tab">場次管理</button>
+      <button class="tab">使用者管理</button>
+    </div>
+    <div class="section">
+      <div class="list">
+        <div class="card list-item">
+          <div class="list-item__main">
+            <div class="list-item__title">竊雲台</div>
+            <div class="list-item__meta">10 小時 · 6 人 · NT$ 2000 · 訂金 1000</div>
+            <div class="list-item__meta">柳送君（1 人可帶）、朱懿辰（1 人可帶）、九千歲（1 人可帶）</div>
+          </div>
+          <div class="list-item__side">
+            <button class="btn btn--ghost btn--small">編輯</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
