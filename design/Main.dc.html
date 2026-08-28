@@ -517,13 +517,22 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
 /* 最後一個單位（分）的右邊距會讓整排比上面那排短 2px，切齊時看得出來 */
 .dt-row .dt-unit:last-child { margin-right: 0; }
 
+/* 頂欄的品牌圖。原本是一個 20px 的勾勾 SVG，改成圖檔之後尺寸給大一點：
+   那是四個字排成 2×2，20px 會糊成一團。 */
+.topbar__mark {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
   </style>
 </helmet>
 
 <div class="app">
 
   <div class="topbar">
-    <div class="topbar__brand"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>步經徑</div>
+    <div class="topbar__brand"><img class="topbar__mark" src="brand-mark.png" alt="" aria-hidden="true">步經徑</div>
     <div class="topbar__actions">
       <button class="btn btn--ghost btn--small">主持人介面</button>
       <button class="btn btn--ghost btn--small">管理員介面</button>

@@ -17,10 +17,9 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, '..', 'booking-king-web', 'style.css'), 'utf8');
 
-/** 品牌列的勾勾，跟 main.js 的 brandIcon() 同一個。 */
-const BRAND_ICON =
-  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" ' +
-  'stroke-width="2" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>';
+/** 品牌圖，跟 main.js 的 brandIcon() 指向同一個檔案。
+    畫板是離線的沙箱，圖必須以檔名引用並用 --image 一起種進去。 */
+const BRAND_ICON = '<img class="topbar__mark" src="brand-mark.png" alt="" aria-hidden="true">';
 
 const topbar = (actions) => `
   <div class="topbar">
