@@ -157,21 +157,24 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 ## 第 6 步：Cloudflare Pages 前端（你做）
 
-左側 **Compute → Workers & Pages → 右上角「Create application」**
-→ 選 Pages 那一側的 **Connect to Git** → 選 `booking-king-web`
+左側 **Compute → Workers & Pages → 右上角「Create application」** → 連 GitHub
+→ 選 `booking-king-web`
 
-★ Cloudflare 2026 改版後：
-　 - Pages 收進左側 **Compute** 底下，不再是頂層項目
-　 - 按鈕叫 **Create application**（不是 Create → Pages）
-　 這兩處都是照實際畫面確認過的。
+★ Cloudflare 已經把 Pages 併進 Workers，所以：
+　 - 畫面標題會寫「Create a **Worker**」，那是對的，不要找 Pages
+　 - 網址會是 `https://<專案名>.<帳號>.workers.dev`，**不是** `.pages.dev`
+　 - repo 裡必須有 `wrangler.jsonc`（已經加好了）。沒有它 `npx wrangler deploy`
+　   會失敗，而錯誤訊息是「找不到進入點」，看不出真正原因是缺設定檔
 
 | 欄位 | 填什麼 |
 |---|---|
-| Framework preset | **None** |
-| Build command | **留空**（純靜態，沒有建置步驟） |
-| Build output directory | `/` |
-
-部署完會拿到 `https://<專案名>.pages.dev`。
+| Project name | `booking-king-web` |
+| **Build command** | **留空**（純靜態，沒有建置步驟） |
+| Deploy command | `npx wrangler deploy`（預設值，不用改） |
+| Builds for non-production branches | **取消勾選**（只有一條 main） |
+| Path | `/` |
+| API token | `Create new token`（讓它自動建） |
+| Variable name / value | **留空**（那是給 Worker 程式用的，靜態站不需要） |
 
 然後把後端網址與 Google Client ID 寫進 `booking-king-web/index.html`：
 
