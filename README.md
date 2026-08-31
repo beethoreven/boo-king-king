@@ -157,10 +157,13 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 ## 第 6 步：Cloudflare Pages 前端（你做）
 
-左側 **Compute → Workers & Pages → Create → Pages → Connect to Git** → 選 `booking-king-web`
+左側 **Compute → Workers & Pages → 右上角「Create application」**
+→ 選 Pages 那一側的 **Connect to Git** → 選 `booking-king-web`
 
-★ Cloudflare 2026 改版後，Pages 被收進左側的 **Compute** 底下，不再是頂層項目。
-　 找不到的話，首頁「Ship something new → Create app」也會走到同一個流程。
+★ Cloudflare 2026 改版後：
+　 - Pages 收進左側 **Compute** 底下，不再是頂層項目
+　 - 按鈕叫 **Create application**（不是 Create → Pages）
+　 這兩處都是照實際畫面確認過的。
 
 | 欄位 | 填什麼 |
 |---|---|
