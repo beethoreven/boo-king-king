@@ -299,24 +299,24 @@ project **不會**各自拿到一份額度。所以窗口要先扣掉同一個�
 workspace，是歷史累積的結果。從第二家店開始，每家店自己一個 Google 帳號、自己一個
 workspace，那時一個 workspace 只跑一個服務，上面的共用問題不存在。
 
-★ **一個還沒證實的假設，如果成立，上面整套窗口算術都是白算的。**
-`instance-hours` 可能量的是「這個 instance **存在**多久」，不是「進程**醒著**多久」。
-2026-08 的四個數字都對得上這個模型（帳期以 UTC 計）：
+★ **一個被否證掉的假設，記在這裡是為了不要有人再走一次。**
+曾經懷疑 `instance-hours` 量的是「instance **存在**多久」而不是「進程**醒著**多久」，
+因為 2026-08 的三個數字都能用「從建立日算到月底」湊出來（744.00 剛好是整月、
+20.02 對應首次部署的 20.5 小時前、616.29 往回推是 08/06）。
 
-| 服務 | 帳單時數 | 「存在時間」推算 |
-|---|---|---|
-| `booking-king-backend` | 20.02 | 首次成功部署 08/31 11:30 → 09/01 08:00 = 20.5 小時 |
-| `zh-cn-to-tw-backend` | 616.29 | 往回推 = 08/06 15:40 建立 |
-| `fireless-war-backend` | 744.00 | 八月前就存在 → 整個 UTC 月是滿的，所以小數是 .00 |
-| 九月計量器 1.72 | | ÷ 3 個服務 = UTC 午夜後 34 分，與截圖時間相符 |
+**那是曲線擬合，不是證據**——三個服務、三個未知的建立日期，任何「從某日起算」的
+模型都必然湊得出來。真正的檢驗是計量器的**爬升速率**，而它不通過：兩次讀數之間
+只增加 0.56 小時（1.72 → 2.28），若三個服務各自持續計時，那代表中間只過了 11 分鐘，
+與實際相差很遠。
 
-★ 這個模型還解釋了 fireless-war 的 Render 請求記錄：那份 log 顯示服務其實**反覆
-睡著**（間隔動輒 3~8 小時，遠超過 15 分鐘的休眠門檻），跟「744 = 整月沒睡」矛盾——
-但如果計時的是 instance 而不是進程，兩者就不衝突。
+★ 所以 fireless-war 的 Render log（顯示服務反覆睡著 3~8 小時）與帳單上的 744
+之間那個矛盾**仍然沒有解釋**。而且還有第二個沒解釋的落差：計量器讀 2.28，八月發票
+讀 1,380，差三個數量級，不可能是同一套帳。
 
-**若成立**：保活完全不影響額度（睡不睡都在計時），能減少 instance-hours 的只有
-減少服務數量。**檢驗方式**：看 Billing 計量器的爬升速率——每過一小時增加約
-「服務數 × 1」小時就是這個模型，只增加約 1 小時就不是。
+★ **要接手查的話，該做的觀察是**：記下兩次「時間 + 計量器讀數」，中間隔幾小時。
+保活現在是 24/7，所以 booking-king 應該持續醒著——**每過一小時增加約 1 小時**就代表
+計量器量的是真實運行時間（那八月那個 1,380 是另一套帳）；**幾乎不動**就代表它量的
+是別的東西。
 
 **乙、不保活**（沒有壓秒需求、慢一分鐘無所謂的部署）
 
@@ -781,26 +781,27 @@ unrelated projects currently share one workspace, which is an accident of histor
 second venue onward each gets its own Google account and therefore its own workspace, where
 a workspace runs a single service and the sharing problem above does not arise.
 
-★ **An unconfirmed hypothesis that, if true, makes all the window arithmetic above moot.**
-`instance-hours` may measure how long the instance **exists**, not how long the process is
-**awake**. All four figures from 2026-08 fit that model, given a UTC billing month:
+★ **A hypothesis that was disproved — recorded so nobody walks it again.**
+It was briefly suspected that `instance-hours` counts how long an instance **exists** rather
+than how long the process is **awake**, because all three August figures could be produced by
+"from creation date to end of month" (744.00 is exactly a full month, 20.02 lands 20.5 hours
+before it ends which is when that service first deployed, and 616.29 works back to 08/06).
 
-| Service | Billed hours | "Time it existed" |
-|---|---|---|
-| `booking-king-backend` | 20.02 | First successful deploy 08/31 11:30 → 09/01 08:00 = 20.5 h |
-| `zh-cn-to-tw-backend` | 616.29 | Working backwards: created 08/06 15:40 |
-| `fireless-war-backend` | 744.00 | Existed before August → a full UTC month, hence the .00 |
-| September meter, 1.72 | | ÷ 3 services = 34 min past UTC midnight, matching the screenshot |
+**That was curve-fitting, not evidence** — three services with three unknown creation dates
+will fit any "counting from some date" model. The real test is how fast the meter climbs, and
+it fails: two readings differed by 0.56 hours (1.72 → 2.28), which under three
+always-counting services would mean only 11 minutes had passed. Far more than that had.
 
-★ The model also reconciles fireless-war's Render request log, which shows the service
-**repeatedly asleep** (gaps of 3–8 hours, far past the 15-minute threshold) and so
-contradicts "744 = never slept" — unless what is being timed is the instance rather than the
-process.
+★ So the contradiction between fireless-war's Render log (a service repeatedly asleep for 3–8
+hours at a time) and its billed 744 hours **remains unexplained**. A second gap is
+unexplained too: the meter reads 2.28 while the August invoice reads 1,380 — three orders of
+magnitude apart, so they cannot be the same ledger.
 
-**If true**: keep-alive costs nothing against the quota (the clock runs whether or not it
-sleeps), and the only way to reduce instance-hours is to run fewer services. **The test**:
-watch how fast the Billing meter climbs — roughly one hour per service per elapsed hour means
-this model, roughly one hour total means it does not.
+★ **If you pick this up, the observation to make is**: two readings of "clock time + meter
+value", a few hours apart. Keep-alive is round-the-clock now, so booking-king should be
+continuously awake — **roughly one hour gained per elapsed hour** means the meter counts real
+running time (and the invoice's 1,380 is a different ledger); **barely moving** means it
+counts something else.
 
 **B. No keep-alive** (a deployment with no to-the-second releases, where a one-minute wait is fine)
 
