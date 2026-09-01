@@ -328,34 +328,14 @@ project **不會**各自拿到一份額度。所以窗口要先扣掉同一個�
 workspace，是歷史累積的結果。從第二家店開始，每家店自己一個 Google 帳號、自己一個
 workspace，那時一個 workspace 只跑一個服務，上面的共用問題不存在。
 
-★ **一個被否證掉的假設，記在這裡是為了不要有人再走一次。**
-曾經懷疑 `instance-hours` 量的是「instance **存在**多久」而不是「進程**醒著**多久」，
-因為 2026-08 的三個數字都能用「從建立日算到月底」湊出來（744.00 剛好是整月、
-20.02 對應首次部署的 20.5 小時前、616.29 往回推是 08/06）。
+★ **計量器量的是真實運行時間**（2026-09-01 實測：兩次讀數間隔 2.60 小時，計量器
+增加 2.61 小時，速率 1.00）。所以一個全天候保活的服務，一個月就是 744 小時——
+單一服務幾乎用滿整份額度。
 
-**那是曲線擬合，不是證據**——三個服務、三個未知的建立日期，任何「從某日起算」的
-模型都必然湊得出來。真正的檢驗是計量器的**爬升速率**，而它不通過：兩次讀數之間
-只增加 0.56 小時（1.72 → 2.28），若三個服務各自持續計時，那代表中間只過了 11 分鐘，
-與實際相差很遠。
-
-★ **那個觀察做完了，2026-09-01：計量器量的就是真實運行時間。**
-
-| 時間 | Free Instance Hours |
-|---|---|
-| 18:42 | 4.42 |
-| 21:18 | 7.03 |
-
-經過 2.60 小時，計量器增加 2.61 小時——**速率剛好 1.00**。「instance 存在就計時」
-會是 3 個服務 × 2.60 = 7.8，差很遠。而 1.00 而不是接近 0，代表當下**只有一個服務
-在持續累計**，那正是唯一有 24/7 保活的 booking-king。
-
-★ **所以計量器與發票是同一套帳**，先前以為的「差三個數量級」是誤判——那只是量
-測當下三個服務裡有兩個在睡。八月就是真的跑了 1,380 小時、真的超過 750，而**那個
-上限就是沒有被執行**。
-
-★ 剩下唯一沒解釋的是 fireless-war：如果計量器量的是真實運行時間，744 小時就代表
-它整月沒睡，而它的 Render log 顯示間隔動輒 3~8 小時。兩者只能有一個對。下一步是
-確認**那份 log 是不是完整的**（是不是只 grep 了某一支端點），而不是再去猜計費邏輯。
+★ **超過額度未必會怎樣。** 2026-08 這個帳號三個服務合計跑了 1,380 小時，是額度的
+1.8 倍，而那個月**既沒有被收費、也沒有被停用**。文件說會停用、Billing 頁說會收費，
+兩件都沒發生。這只能說明那次沒有被執行，不能推論成以後不會——設計時仍然照額度算，
+但不必為了「就要爆了」而恐慌。
 
 **乙、不保活**（沒有壓秒需求、慢一分鐘無所謂的部署）
 
@@ -852,37 +832,15 @@ unrelated projects currently share one workspace, which is an accident of histor
 second venue onward each gets its own Google account and therefore its own workspace, where
 a workspace runs a single service and the sharing problem above does not arise.
 
-★ **A hypothesis that was disproved — recorded so nobody walks it again.**
-It was briefly suspected that `instance-hours` counts how long an instance **exists** rather
-than how long the process is **awake**, because all three August figures could be produced by
-"from creation date to end of month" (744.00 is exactly a full month, 20.02 lands 20.5 hours
-before it ends which is when that service first deployed, and 616.29 works back to 08/06).
+★ **The meter counts real running time** (measured 2026-09-01: two readings 2.60 hours
+apart, 2.61 hours gained, a rate of 1.00). So a service kept alive round the clock costs 744
+hours a month — one service very nearly exhausts the whole allowance.
 
-**That was curve-fitting, not evidence** — three services with three unknown creation dates
-will fit any "counting from some date" model. The real test is how fast the meter climbs, and
-it fails: two readings differed by 0.56 hours (1.72 → 2.28), which under three
-always-counting services would mean only 11 minutes had passed. Far more than that had.
-
-★ **That observation was made on 2026-09-01: the meter counts real running time.**
-
-| Clock | Free Instance Hours |
-|---|---|
-| 18:42 | 4.42 |
-| 21:18 | 7.03 |
-
-2.60 hours elapsed, 2.61 hours gained — a rate of exactly **1.00**. Counting mere existence
-would have given 3 services × 2.60 = 7.8. And 1.00 rather than near zero means exactly one
-service was accruing: booking-king, the only one with round-the-clock keep-alive.
-
-★ **So the meter and the invoice are the same ledger.** The "three orders of magnitude"
-apart was a misreading — two of the three services simply happened to be asleep when the
-meter was read. August really did run 1,380 hours, really did exceed 750, and the limit
-simply **went unenforced**.
-
-★ The one thing still unexplained is fireless-war: if the meter counts real running time,
-744 hours means it never slept all month, while its Render log shows gaps of 3 to 8 hours.
-Only one of those can be right. The next step is establishing whether that log was complete
-(or filtered to a single endpoint), not guessing further at billing logic.
+★ **Exceeding the allowance may do nothing.** In 2026-08 this account's three services ran
+1,380 hours between them, 1.8× the allowance, and that month brought **neither a charge nor a
+suspension** — the docs promise suspension, the Billing page warns of charges, and neither
+happened. That says the limit went unenforced once, not that it always will: plan against the
+allowance, but do not panic at being near it.
 
 **B. No keep-alive** (a deployment with no to-the-second releases, where a one-minute wait is fine)
 
