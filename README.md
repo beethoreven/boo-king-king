@@ -338,14 +338,24 @@ workspace，那時一個 workspace 只跑一個服務，上面的共用問題不
 只增加 0.56 小時（1.72 → 2.28），若三個服務各自持續計時，那代表中間只過了 11 分鐘，
 與實際相差很遠。
 
-★ 所以 fireless-war 的 Render log（顯示服務反覆睡著 3~8 小時）與帳單上的 744
-之間那個矛盾**仍然沒有解釋**。而且還有第二個沒解釋的落差：計量器讀 2.28，八月發票
-讀 1,380，差三個數量級，不可能是同一套帳。
+★ **那個觀察做完了，2026-09-01：計量器量的就是真實運行時間。**
 
-★ **要接手查的話，該做的觀察是**：記下兩次「時間 + 計量器讀數」，中間隔幾小時。
-保活現在是 24/7，所以 booking-king 應該持續醒著——**每過一小時增加約 1 小時**就代表
-計量器量的是真實運行時間（那八月那個 1,380 是另一套帳）；**幾乎不動**就代表它量的
-是別的東西。
+| 時間 | Free Instance Hours |
+|---|---|
+| 18:42 | 4.42 |
+| 21:18 | 7.03 |
+
+經過 2.60 小時，計量器增加 2.61 小時——**速率剛好 1.00**。「instance 存在就計時」
+會是 3 個服務 × 2.60 = 7.8，差很遠。而 1.00 而不是接近 0，代表當下**只有一個服務
+在持續累計**，那正是唯一有 24/7 保活的 booking-king。
+
+★ **所以計量器與發票是同一套帳**，先前以為的「差三個數量級」是誤判——那只是量
+測當下三個服務裡有兩個在睡。八月就是真的跑了 1,380 小時、真的超過 750，而**那個
+上限就是沒有被執行**。
+
+★ 剩下唯一沒解釋的是 fireless-war：如果計量器量的是真實運行時間，744 小時就代表
+它整月沒睡，而它的 Render log 顯示間隔動輒 3~8 小時。兩者只能有一個對。下一步是
+確認**那份 log 是不是完整的**（是不是只 grep 了某一支端點），而不是再去猜計費邏輯。
 
 **乙、不保活**（沒有壓秒需求、慢一分鐘無所謂的部署）
 
@@ -853,16 +863,26 @@ will fit any "counting from some date" model. The real test is how fast the mete
 it fails: two readings differed by 0.56 hours (1.72 → 2.28), which under three
 always-counting services would mean only 11 minutes had passed. Far more than that had.
 
-★ So the contradiction between fireless-war's Render log (a service repeatedly asleep for 3–8
-hours at a time) and its billed 744 hours **remains unexplained**. A second gap is
-unexplained too: the meter reads 2.28 while the August invoice reads 1,380 — three orders of
-magnitude apart, so they cannot be the same ledger.
+★ **That observation was made on 2026-09-01: the meter counts real running time.**
 
-★ **If you pick this up, the observation to make is**: two readings of "clock time + meter
-value", a few hours apart. Keep-alive is round-the-clock now, so booking-king should be
-continuously awake — **roughly one hour gained per elapsed hour** means the meter counts real
-running time (and the invoice's 1,380 is a different ledger); **barely moving** means it
-counts something else.
+| Clock | Free Instance Hours |
+|---|---|
+| 18:42 | 4.42 |
+| 21:18 | 7.03 |
+
+2.60 hours elapsed, 2.61 hours gained — a rate of exactly **1.00**. Counting mere existence
+would have given 3 services × 2.60 = 7.8. And 1.00 rather than near zero means exactly one
+service was accruing: booking-king, the only one with round-the-clock keep-alive.
+
+★ **So the meter and the invoice are the same ledger.** The "three orders of magnitude"
+apart was a misreading — two of the three services simply happened to be asleep when the
+meter was read. August really did run 1,380 hours, really did exceed 750, and the limit
+simply **went unenforced**.
+
+★ The one thing still unexplained is fireless-war: if the meter counts real running time,
+744 hours means it never slept all month, while its Render log shows gaps of 3 to 8 hours.
+Only one of those can be right. The next step is establishing whether that log was complete
+(or filtered to a single endpoint), not guessing further at billing logic.
 
 **B. No keep-alive** (a deployment with no to-the-second releases, where a one-minute wait is fine)
 
