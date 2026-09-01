@@ -186,6 +186,141 @@ fetch(window.__BOOKING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
 
 ---
 
+#### Part I. 排程（cron-job.org）
+
+後端有一支每日批次 `POST /api/jobs/daily`，**不會自己跑**——Render 免費方案會讓服務
+休眠，睡著的行程裡沒有計時器會醒來，所以觸發必須從外面來。
+
+**一次請求做四件事**（`jobs.py`，各自一個交易，一支失敗不影響其他三支）：
+
+| 步驟 | 做什麼 | 沒跑會怎樣 |
+|---|---|---|
+| `ended` | 已成立、且場次時間加劇本時長已過 → 標成已結束 | 玩過的場次永遠停在「已成立」 |
+| `cancelled` | 日期已過卻還沒走完流程的預約 → 取消 | 待辦愈積愈多，**容量計算會把作廢的組別繼續算進去** |
+| `waitlist_expired` | 候補掛超過 3 天、且正選還在 → 取消 | **對玩家的承諾跳票**（介面明寫「候補將於三天後自動失效」） |
+| `listing` | 劇本上下架狀態落地 | 只影響管理員看到的欄位；玩家端是每次查詢即時算的 |
+
+回應裡的 `stale_booked` 是健康指標，**正常永遠是 0**。不是 0 就代表漏跑過，
+到管理員介面按一次「場次整理」補完（那一版不設回看窗口）。
+
+★ 四件任務**不是四個排程**。排程服務眼中的「一個工作」只是一條「什麼時間、打哪個
+網址」的規則，它不知道對面做了什麼。塞進同一次請求是因為每次請求都可能要付一次
+冷啟動——拆成四個等於把服務叫醒四次。
+
+##### 冷啟動會撞到逾時（實測）
+
+2026-09-01 對正式環境量到的數字：
+
+| | 耗時 |
+|---|---|
+| `/api/health` 冷啟動 | **32.4 秒** |
+| `/api/health` 醒著 | 0.19 秒 |
+| `/api/ready` 醒著（含一次 DB 來回） | 0.26 秒 |
+
+而 cron-job.org 免費方案**等 30 秒就關閉連線**，並且**連續失敗超過 25 次會自動停用
+那個工作**。
+
+兩件事合起來是個有日期的陷阱：如果 00:00 打過來時服務是睡的，那一打必定逾時；
+每晚一次，大約 **25 天後排程被安靜地關掉**，而每日任務就從此停擺。
+
+★ 逾時的時候不要假設「工作還是有跑完」。請求在 Render 那端被 hold 著等服務啟動，
+客戶端提早斷線之後它會不會照送，沒有證據，所以一律當作沒跑。
+
+反過來說，只要服務是醒的，整批 5 個交易在零點幾秒內跑完（一次連線加查詢只要
+0.05 秒，同區的效果），離 30 秒差兩個數量級。**所以要解的不是「任務太慢」，
+是「別讓它在睡著的時候被打」。**
+
+##### 要設哪幾個工作
+
+依那家店有沒有保活，分兩種。**兩種都是 2 個工作。**
+
+★ 預設走甲。乙是給「刻意決定不保活」的部署用的，那是一個要明講的選擇，
+不要因為某個部署是 demo 就自動歸到乙——那個 25 次自動停用的陷阱只在乙會踩到。
+
+**甲、免費方案 + 營業時段保活**（預設）
+
+| | 工作 1：保活 | 工作 2：每日任務 |
+|---|---|---|
+| URL | `<backend>/api/health` | `<backend>/api/jobs/daily` |
+| 方法 | GET | **POST** |
+| 排程 | `*/10 6-23,0-1 * * *` | `0 0 * * *` |
+| 標頭 | 不用 | `X-Job-Token: <JOB_TOKEN>` |
+
+06:00–02:00 的窗口把 00:00 包在裡面，所以每日任務打過來時服務一定是醒的，
+不需要暖機。額度用量 20 × 31 = **620 / 750 小時**。
+
+★ 保活**只能打 `/api/health`**。打 `/api/ready` 會連資料庫，等於每 10 分鐘叫醒
+Neon 一次，直接把每月 100 CU-hours 燒光。
+
+**乙、不保活**（沒有壓秒需求、慢一分鐘無所謂的部署）
+
+| | 工作 1：暖機 | 工作 2：每日任務 |
+|---|---|---|
+| URL | `<backend>/api/health` | `<backend>/api/jobs/daily` |
+| 方法 | GET | **POST** |
+| 排程 | `50,55 23 * * *` | `0 0 * * *` |
+| 標頭 | 不用 | `X-Job-Token: <JOB_TOKEN>` |
+
+★ **暖機故意打兩次，這是為了避開那個 25 次的自動停用。** 23:50 那一打會付冷啟動、
+大概率逾時被記成失敗；23:55 那一打服務已經醒了，一定成功——同一個工作只要有成功，
+連續失敗數就歸零，永遠累積不到 25。單打一次的話，那個工作會在一個月內被關掉。
+
+★ 服務閒置 15 分鐘才睡，23:55 到 00:00 只有 5 分鐘，所以每日任務打過來時還醒著。
+
+**丙、付費方案（Starter 以上）** —— 服務不休眠，沒有冷啟動也不需要保活，
+**只要工作 2 一個**。
+
+##### cron-job.org 上實際怎麼填
+
+1. 註冊並登入 <https://cron-job.org>（免費，工作數不限）
+2. **Create cronjob**
+3. **Title** 填得認得出是哪家店，例如 `步經徑 · 每日任務`
+4. **URL** 填上表的網址
+5. **Schedule** 切到 expert mode，貼上表裡的 cron 字串
+6. 展開 **Advanced**：
+   - **Request method** 改成 `POST`（每日任務才要；保活／暖機維持 GET）
+   - **Headers** 新增一列：名稱 `X-Job-Token`，值是 Render 上那個 `JOB_TOKEN`
+   - 開啟失敗通知，寄到你的信箱
+7. 存檔，按 **Run now** 測一次，展開執行紀錄看回應
+
+`JOB_TOKEN` 的產生方式見 Part G。**這個值要跟 Render 環境變數裡的完全一致**，
+不一致的話這支回 401，而排程只會告訴你「失敗」，不會告訴你是 token 錯了——
+所以下一步的手動驗證不要跳過。
+
+##### 驗證
+
+```bash
+curl -X POST https://booking-king-backend.onrender.com/api/jobs/daily \
+  -H "X-Job-Token: <你的 JOB_TOKEN>"
+```
+
+預期拿到各步驟的筆數，例如：
+
+```json
+{"ended": 0, "cancelled": 0, "waitlist_expired": 0, "listing": 0, "stale_booked": 0}
+```
+
+- 回 **401** → token 不對
+- 回 **503** → Render 上根本沒設 `JOB_TOKEN`
+- `stale_booked` **不是 0** → 過去漏跑過，到管理員介面按「場次整理」補完
+
+★ 這支**重跑安全**：每一支都是「把符合條件的列改成某個狀態」，改完就不再符合條件，
+所以手動測、排程重試、按兩次「場次整理」，結果都一樣。
+
+##### 集中還是分開
+
+排程可以**全部設在同一個 cron-job.org 帳號**，即使各店的 Render／Neon 是分開的。
+理由是它不是那家店的基礎設施，是一個打電話的人：它不存任何店家資料，只存網址和
+`JOB_TOKEN`；而那個 token 保護的兩支端點都只動「已經過去」的資料且重跑安全，
+提早被觸發做的事跟 00:00 自己跑完全一樣。
+
+★ 這個結論**取決於 `JOB_TOKEN` 後面掛什麼**。哪天在同一個 token 後面加了有破壞性的
+端點，集中的風險評估就要重算。
+
+★ 快取（Redis）**不能比照辦理**，它存的是店家資料，必須跟著店家走。
+
+---
+
 ### 上線過程中修正的問題
 
 這一節記錄實際部署時才浮現、而本機測試不可能發現的問題。
@@ -244,14 +379,16 @@ advisory lock 是交易層級的，呼叫端 commit 時自動釋放，就算行�
 1. 那家店自己的 Google 帳號 → 自己的 Neon project（Singapore）
 2. 自己的 Render service，**指向同一個 repo、同一條 `main`**，只有環境變數不同
 3. 自己的 Cloudflare 專案，掛自己的網域
+4. 到 cron-job.org 加那家店的排程（見 Part I）——**這一步很容易漏，漏了不會有任何錯誤訊息**，只會讓場次狀態慢慢失準、候補永遠不過期
 
+★ 排程可以全部設在同一個 cron-job.org 帳號，不必跟著店家分（理由見 Part I）。快取不行。
 ★ 不同帳號 = 各自一份免費額度（Render 750 instance-hours、Neon 100 CU-hours 都是各自算）。
 ★ **先推步經徑，確認沒問題再推其他店。** Render 可以逐個 service 關掉自動部署。一份程式碼的代價就是一次壞發布會打到所有店，這個流程是用來擋它的。
 ★ 配色與圖片的客製空間已經留好：`style.css` 的 `:root` 是一組設計 token，換配色是覆寫變數而不是改程式；`brand-mark.png` 與 `favicon.png` 是換檔。
 
 ### 已知限制
 
-- **Render 免費方案閒置 15 分鐘會休眠**，冷啟動約一分鐘。保活要打 `/api/health`（不碰資料庫），**絕對不要打 `/api/ready`**——那會喚醒 Neon 燒掉 100 CU-hours 額度。而且只在營業時段打：免費方案每月 750 instance-hours，24/7 會用掉 744 小時幾乎沒餘裕。
+- **Render 免費方案閒置 15 分鐘會休眠**，冷啟動**實測 32.4 秒**（2026-09-01 對正式環境量的）。保活要打 `/api/health`（不碰資料庫），**絕對不要打 `/api/ready`**——那會喚醒 Neon 燒掉 100 CU-hours 額度。而且不要全天候：24/7 會用掉 744/750 小時，只剩 6 小時餘裕，而超過的懲罰是整個 workspace 的免費服務停用到下個月。定案是 06:00–02:00（620/750）。設定見 Part I。
 - **每月 Neon CU-hours 用量取決於「營業時段內最長無人存取間隔」有沒有超過 5 分鐘**。已埋量測：`GET /internal/idle-gap-stats`（需 `X-Job-Token`）。
 - **自訂網域需要自備網域**。Cloudflare 端不收費且不限數量，網域本身要向註冊商購買。
 
@@ -442,6 +579,154 @@ fetch(window.__BOOKING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
 
 ---
 
+#### Part I. Scheduling (cron-job.org)
+
+The backend has a daily batch at `POST /api/jobs/daily` that **does not run itself** — a
+free Render service spins down when idle, and a sleeping process has no timer that will
+wake up. The trigger has to come from outside.
+
+**One request, four tasks** (`jobs.py`, each in its own transaction, so one failing does
+not take the other three down):
+
+| Step | What it does | If it never runs |
+|---|---|---|
+| `ended` | Confirmed sessions whose time plus the script's duration has passed → mark ended | Sessions already played stay "confirmed" forever |
+| `cancelled` | Bookings whose date has passed without completing the flow → cancel | The to-do list keeps growing, and **capacity still counts groups that are long void** |
+| `waitlist_expired` | Waitlist entries older than 3 days where the booked group still stands → cancel | **A promise to players is broken** — the UI says a waitlist entry expires after three days |
+| `listing` | Persist the listed/delisted status onto the column | Only affects what an admin sees; the player side computes it live on every query |
+
+`stale_booked` in the response is a health signal and is **always 0** in normal operation.
+Anything else means a run was missed — press "場次整理" in the admin UI once to catch up
+(that version applies no lookback window).
+
+★ Four tasks is **not four schedules**. A "job" to a scheduler is only a rule saying
+"at this time, call this URL"; it has no idea what happens at the other end. They share
+one request because every request may have to pay a cold start — four jobs would wake the
+service four times.
+
+##### Cold start collides with the timeout (measured)
+
+Measured against production on 2026-09-01:
+
+| | Time |
+|---|---|
+| `/api/health`, cold | **32.4 s** |
+| `/api/health`, warm | 0.19 s |
+| `/api/ready`, warm (includes one DB round trip) | 0.26 s |
+
+cron-job.org's free plan **closes the connection after 30 seconds**, and **deactivates a
+job once it fails more than 25 times in a row**.
+
+Together those are a trap with a date on it: if the service is asleep when 00:00 comes
+around, that call always times out — once a night, so roughly **25 days later the schedule
+is quietly switched off**, and the daily batch stops happening at all.
+
+★ On a timeout, do not assume the work still completed. Render holds the request while the
+service spins up, and there is no evidence about whether it still forwards it once the
+client has hung up — so treat it as not having run.
+
+The other way round: while the service is awake the whole batch of 5 transactions finishes
+in a fraction of a second (one connection plus query costs 0.05 s — that is what
+same-region buys), two orders of magnitude clear of the timeout. **So the thing to fix is
+not "the task is slow", it is "don't call it while it is asleep".**
+
+##### Which jobs to create
+
+Two shapes, depending on whether that venue is kept alive. **Both are 2 jobs.**
+
+★ A is the default. B is for a deployment that has *deliberately* decided against
+keep-alive — an explicit choice, not something a deployment falls into for being a demo.
+The 25-failure deactivation trap only applies to B.
+
+**A. Free plan with business-hours keep-alive** (the default)
+
+| | Job 1: keep-alive | Job 2: daily batch |
+|---|---|---|
+| URL | `<backend>/api/health` | `<backend>/api/jobs/daily` |
+| Method | GET | **POST** |
+| Schedule | `*/10 6-23,0-1 * * *` | `0 0 * * *` |
+| Header | none | `X-Job-Token: <JOB_TOKEN>` |
+
+The 06:00–02:00 window contains 00:00, so the service is always awake when the daily batch
+arrives and no warm-up is needed. Quota use is 20 × 31 = **620 / 750 hours**.
+
+★ Keep-alive **must hit `/api/health`**. `/api/ready` touches the database, which would
+wake Neon every 10 minutes and burn the whole 100 CU-hours monthly allowance.
+
+**B. No keep-alive** (a deployment with no to-the-second releases, where a one-minute wait is fine)
+
+| | Job 1: warm-up | Job 2: daily batch |
+|---|---|---|
+| URL | `<backend>/api/health` | `<backend>/api/jobs/daily` |
+| Method | GET | **POST** |
+| Schedule | `50,55 23 * * *` | `0 0 * * *` |
+| Header | none | `X-Job-Token: <JOB_TOKEN>` |
+
+★ **The warm-up deliberately fires twice, to dodge that 25-failure deactivation.** The
+23:50 call pays the cold start and will most likely time out and be recorded as a failure;
+the 23:55 call finds the service awake and succeeds — and one success resets the streak, so
+it can never reach 25. Fire it once only and the job gets switched off within a month.
+
+★ A service sleeps after 15 idle minutes, and 23:55 to 00:00 is only 5, so it is still
+awake when the daily batch arrives.
+
+**C. Paid plan (Starter and above)** — the service never sleeps, so there is no cold start
+and no keep-alive: **job 2 alone is enough**.
+
+##### What to fill in on cron-job.org
+
+1. Register and sign in at <https://cron-job.org> (free, no limit on the number of jobs)
+2. **Create cronjob**
+3. **Title** — make the venue recognisable, e.g. `步經徑 · daily batch`
+4. **URL** — from the table above
+5. **Schedule** — switch to expert mode and paste the cron string from the table
+6. Expand **Advanced**:
+   - **Request method** → `POST` (daily batch only; keep-alive and warm-up stay GET)
+   - **Headers** → add `X-Job-Token` with the `JOB_TOKEN` value from Render
+   - Turn on failure notifications to your email
+7. Save, press **Run now**, and open the execution history to read the response
+
+`JOB_TOKEN` is generated in Part G. **It must match the Render environment variable
+exactly** — a mismatch returns 401, and the scheduler will only tell you "failed", not that
+the token was wrong. Which is why the manual check below is not optional.
+
+##### Verification
+
+```bash
+curl -X POST https://booking-king-backend.onrender.com/api/jobs/daily \
+  -H "X-Job-Token: <your JOB_TOKEN>"
+```
+
+Expect a count per step:
+
+```json
+{"ended": 0, "cancelled": 0, "waitlist_expired": 0, "listing": 0, "stale_booked": 0}
+```
+
+- **401** → wrong token
+- **503** → `JOB_TOKEN` is not set on Render at all
+- `stale_booked` **not 0** → runs were missed; press "場次整理" in the admin UI to catch up
+
+★ The endpoint is **safe to re-run**: every step moves rows matching a condition into a
+state that no longer matches it, so a manual test, a scheduler retry, and pressing
+"場次整理" twice all produce the same result.
+
+##### Centralised or per-venue
+
+Schedules can all live in **one cron-job.org account**, even when each venue's Render and
+Neon are separate. The scheduler is not that venue's infrastructure — it is a caller: it
+stores no venue data, only URLs and a `JOB_TOKEN`, and the two endpoints that token
+protects both act solely on data already in the past and are safe to re-run, so triggering
+one early does exactly what 00:00 would have done anyway.
+
+★ That conclusion **depends on what sits behind `JOB_TOKEN`**. Put anything destructive
+behind the same token and the centralisation trade-off has to be re-evaluated.
+
+★ The cache (Redis) **does not get the same treatment** — it holds venue data, so it stays
+with the venue.
+
+---
+
 ### Problems found during deployment
 
 This section records issues that only surfaced against real hosting and could not have been found locally.
@@ -500,13 +785,15 @@ The code **does not change**. Create a fresh set of accounts and services for th
 1. That venue's own Google account → its own Neon project (Singapore)
 2. Its own Render service, **pointing at the same repo and the same `main`**, differing only in environment variables
 3. Its own Cloudflare project, on its own domain
+4. Add that venue's schedules on cron-job.org (see Part I) — **this step is easy to forget and fails silently**; nothing errors, the session statuses just drift out of date and waitlist entries never expire
 
+★ Schedules can all live in one cron-job.org account rather than being split per venue (reasoning in Part I). The cache cannot.
 ★ Separate accounts mean separate free quotas (Render's 750 instance-hours and Neon's 100 CU-hours are both counted per account).
 ★ **Deploy BuJingJing first, confirm it, then the rest.** Render allows disabling auto-deploy per service. The price of a single codebase is that one bad release reaches every venue; this procedure is what holds that back.
 ★ Room for per-venue theming already exists: `style.css`'s `:root` is a set of design tokens, so changing colours means overriding variables rather than editing code, and `brand-mark.png` / `favicon.png` are file swaps.
 
 ### Known limitations
 
-- **Render's free plan sleeps after 15 idle minutes**, with roughly a one-minute cold start. Keep-alive must hit `/api/health` (no database) and **never `/api/ready`** — that would wake Neon and burn the 100 CU-hours quota. Keep it to business hours too: the free plan allows 750 instance-hours a month, and running 24/7 consumes 744 with almost no margin.
+- **Render's free plan sleeps after 15 idle minutes**, with a cold start **measured at 32.4 s** against production on 2026-09-01. Keep-alive must hit `/api/health` (no database) and **never `/api/ready`** — that would wake Neon and burn the 100 CU-hours quota. Do not run it around the clock either: 24/7 consumes 744 of the 750 hours, leaving 6 hours of margin, and going over suspends every free service in that workspace until the next month. The settled window is 06:00–02:00 (620/750). See Part I to set it up.
 - **Monthly Neon CU-hours depend on whether the longest gap between accesses during business hours exceeds 5 minutes.** Instrumentation is in place: `GET /internal/idle-gap-stats` (requires `X-Job-Token`).
 - **A custom domain requires owning a domain.** Cloudflare charges nothing and imposes no limit on the number; the domain itself is bought from a registrar.
