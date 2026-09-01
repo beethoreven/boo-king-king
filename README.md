@@ -254,6 +254,35 @@ fetch(window.__BOOKING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
 ★ 保活**只能打 `/api/health`**。打 `/api/ready` 會連資料庫，等於每 10 分鐘叫醒
 Neon 一次，直接把每月 100 CU-hours 燒光。
 
+##### 第三個工作：每週的異常點數遞減
+
+| | 工作 3：每週遞減 |
+|---|---|
+| URL | `<backend>/api/jobs/weekly` |
+| 方法 | **POST** |
+| 排程 | `0 8 * * 1`（每週一上午 8 點） |
+| 標頭 | `X-Job-Token: <JOB_TOKEN>` |
+
+所有人的異常點數減 1，並把已到期的停權落地。**沒有這一支，累進停權就不能用**
+——點數只增不減的話，偶爾誤觸的老客人累積幾年必然被封（見 auth_utils/guard.py）。
+
+★ **時間要挑在保活窗口「之內」。** 這一支漏跑完全沒關係（點數多留一週，下次
+補回來），但那不是「可以隨便挑時間」的理由——正好相反：既然什麼時候跑都沒差，
+就該挑**最便宜**的時間。排在窗口外會撞 32 秒冷啟動、把服務叫醒多算
+instance-hours、還大概率留下一筆逾時的失敗紀錄，而換到的東西是零。
+
+  ★ 這條判準對每一個「漏跑沒關係」的排程都適用：容錯高**不等於**可以隨便排。
+
+##### 驗證
+
+```bash
+curl -X POST https://booking-king-backend.onrender.com/api/jobs/weekly \
+  -H "X-Job-Token: <你的 JOB_TOKEN>"
+```
+
+回 `{"decayed_users": N}`，N 是這次有幾個人被減點。重跑安全：多跑一次只是多減
+一點，不會壞。
+
 ★ **750 小時是整個 workspace 共用的，不是這個服務的。** 階層是
 workspace → project → environment → service，額度和帳單都在最上層——分成不同的
 project **不會**各自拿到一份額度。所以窗口要先扣掉同一個帳號裡其他服務的用量。
@@ -727,6 +756,38 @@ the reasoning follows.
 
 ★ Keep-alive **must hit `/api/health`**. `/api/ready` touches the database, which would
 wake Neon every 10 minutes and burn the whole 100 CU-hours monthly allowance.
+
+##### A third job: the weekly abuse-point decay
+
+| | Job 3: weekly decay |
+|---|---|
+| URL | `<backend>/api/jobs/weekly` |
+| Method | **POST** |
+| Schedule | `0 8 * * 1` (Mondays, 08:00) |
+| Header | `X-Job-Token: <JOB_TOKEN>` |
+
+Drops everyone's abuse points by one and lands expired suspensions. **Escalating
+suspension does not work without it** — points only ever rise, so a long-standing
+customer who misfires occasionally is eventually banned (see auth_utils/guard.py).
+
+★ **Schedule it inside the keep-alive window.** Missing a run costs nothing here
+(points stay a week longer and the next run catches up), but that is not a licence to
+pick any time — the opposite: precisely because the timing does not matter, pick the
+*cheapest* time. Outside the window it meets a 32-second cold start, wakes the service
+for extra instance-hours, and most likely records a timeout, in exchange for nothing.
+
+  ★ The rule generalises to every schedule whose runs are optional: tolerant of being
+  missed is **not** the same as free to place anywhere.
+
+##### Verification
+
+```bash
+curl -X POST https://booking-king-backend.onrender.com/api/jobs/weekly \
+  -H "X-Job-Token: <your JOB_TOKEN>"
+```
+
+Expect `{"decayed_users": N}`, N being how many accounts lost a point. Safe to re-run:
+running twice just decays one more point.
 
 ★ **The 750 hours belong to the whole workspace, not to this service.** The hierarchy is
 workspace → project → environment → service, and both quota and billing sit at the top —
