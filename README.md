@@ -243,11 +243,13 @@ fetch(window.__BOOKING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
 |---|---|---|
 | URL | `<backend>/api/health` | `<backend>/api/jobs/daily` |
 | 方法 | GET | **POST** |
-| 排程 | `*/10 6-23,0-1 * * *` | `0 0 * * *` |
+| 排程 | `*/10 * * * *` | `0 0 * * *` |
 | 標頭 | 不用 | `X-Job-Token: <JOB_TOKEN>` |
 
-06:00–02:00 的窗口把 00:00 包在裡面，所以每日任務打過來時服務一定是醒的，
-不需要暖機。額度用量 20 × 31 = **620 / 750 小時**。
+全天候保活，服務永遠是醒的，所以每日任務不會撞冷啟動、也不需要暖機。
+額度用量 24 × 31 = **744 / 750 小時**（單一服務就幾乎用滿）。
+
+★ 要省額度就縮窗口，見下方的窗口對照表。步經徑刻意不縮，理由也在下面。
 
 ★ 保活**只能打 `/api/health`**。打 `/api/ready` 會連資料庫，等於每 10 分鐘叫醒
 Neon 一次，直接把每月 100 CU-hours 燒光。
@@ -287,11 +289,34 @@ project **不會**各自拿到一份額度。所以窗口要先扣掉同一個�
 這只能說明那一次沒有被執行，不能推論成以後不會。用 Monthly Included Usage 那個
 計量器持續看，不要靠推論。
 
-★ **步經徑取 20 小時窗口（620），案主的決定。** 明知加起來會超標而仍然照設，
-理由是這個 Render 帳號在他自己手上、代價可控，而**沒有真的爆過一次，就不會知道
-爆的時候實際發生什麼**——是停用、是收費、有沒有預警。文件與 Billing 頁講的後果
-不一致，八月的實測又跟兩者都不符；與其繼續推論，不如讓它撞一次把行為量出來。
+★ **步經徑取全天候保活（744），案主的決定。** 明知整個 workspace 早就超標而仍然
+照設，理由是這個 Render 帳號在他自己手上、代價可控，而**沒有真的爆過一次，就不會
+知道爆的時候實際發生什麼**——是停用、是收費、有沒有預警。文件與 Billing 頁講的
+後果不一致，八月的實測又跟兩者都不符；與其繼續推論，不如讓它撞一次把行為量出來。
 這是刻意的取捨，不是漏看。
+
+★ **這個結構是這個帳號特有的，不會延續下去。** 目前三個不相干的專案擠在同一個
+workspace，是歷史累積的結果。從第二家店開始，每家店自己一個 Google 帳號、自己一個
+workspace，那時一個 workspace 只跑一個服務，上面的共用問題不存在。
+
+★ **一個還沒證實的假設，如果成立，上面整套窗口算術都是白算的。**
+`instance-hours` 可能量的是「這個 instance **存在**多久」，不是「進程**醒著**多久」。
+2026-08 的四個數字都對得上這個模型（帳期以 UTC 計）：
+
+| 服務 | 帳單時數 | 「存在時間」推算 |
+|---|---|---|
+| `booking-king-backend` | 20.02 | 首次成功部署 08/31 11:30 → 09/01 08:00 = 20.5 小時 |
+| `zh-cn-to-tw-backend` | 616.29 | 往回推 = 08/06 15:40 建立 |
+| `fireless-war-backend` | 744.00 | 八月前就存在 → 整個 UTC 月是滿的，所以小數是 .00 |
+| 九月計量器 1.72 | | ÷ 3 個服務 = UTC 午夜後 34 分，與截圖時間相符 |
+
+★ 這個模型還解釋了 fireless-war 的 Render 請求記錄：那份 log 顯示服務其實**反覆
+睡著**（間隔動輒 3~8 小時，遠超過 15 分鐘的休眠門檻），跟「744 = 整月沒睡」矛盾——
+但如果計時的是 instance 而不是進程，兩者就不衝突。
+
+**若成立**：保活完全不影響額度（睡不睡都在計時），能減少 instance-hours 的只有
+減少服務數量。**檢驗方式**：看 Billing 計量器的爬升速率——每過一小時增加約
+「服務數 × 1」小時就是這個模型，只增加約 1 小時就不是。
 
 **乙、不保活**（沒有壓秒需求、慢一分鐘無所謂的部署）
 
@@ -690,11 +715,15 @@ The 25-failure deactivation trap only applies to B.
 |---|---|---|
 | URL | `<backend>/api/health` | `<backend>/api/jobs/daily` |
 | Method | GET | **POST** |
-| Schedule | `*/10 6-23,0-1 * * *` | `0 0 * * *` |
+| Schedule | `*/10 * * * *` | `0 0 * * *` |
 | Header | none | `X-Job-Token: <JOB_TOKEN>` |
 
-The 06:00–02:00 window contains 00:00, so the service is always awake when the daily batch
-arrives and no warm-up is needed. Quota use is 20 × 31 = **620 / 750 hours**.
+Round-the-clock, so the service is always awake: the daily batch never meets a cold start
+and no warm-up is needed. Quota use is 24 × 31 = **744 / 750 hours** — one service very
+nearly exhausts the allowance on its own.
+
+★ To conserve quota, narrow the window using the table below. 步經徑 deliberately does not;
+the reasoning follows.
 
 ★ Keep-alive **must hit `/api/health`**. `/api/ready` touches the database, which would
 wake Neon every 10 minutes and burn the whole 100 CU-hours monthly allowance.
@@ -739,13 +768,39 @@ docs say suspension, the Billing page says charges, and neither happened. That s
 limit went unenforced once; it does not say it always will. Watch the Monthly Included
 Usage meter rather than reasoning about it.
 
-★ **步經徑 runs the 20-hour window (620) — the owner's call.** Setting it knowing the
-workspace total will exceed the allowance is deliberate: this Render account is his own, so
+★ **步經徑 runs round-the-clock (744) — the owner's call.** Setting it knowing the
+workspace is already far over the allowance is deliberate: this Render account is his own, so
 the downside is bounded, and **until it actually blows up once nobody knows what blowing up
 looks like** — suspension, a charge, whether there is any warning. The docs and the Billing
 page describe different consequences, and August matched neither; rather than keep reasoning
 about it, let it hit the wall once and measure the behaviour. A considered trade-off, not an
 oversight.
+
+★ **This arrangement is peculiar to this account and does not carry forward.** Three
+unrelated projects currently share one workspace, which is an accident of history. From the
+second venue onward each gets its own Google account and therefore its own workspace, where
+a workspace runs a single service and the sharing problem above does not arise.
+
+★ **An unconfirmed hypothesis that, if true, makes all the window arithmetic above moot.**
+`instance-hours` may measure how long the instance **exists**, not how long the process is
+**awake**. All four figures from 2026-08 fit that model, given a UTC billing month:
+
+| Service | Billed hours | "Time it existed" |
+|---|---|---|
+| `booking-king-backend` | 20.02 | First successful deploy 08/31 11:30 → 09/01 08:00 = 20.5 h |
+| `zh-cn-to-tw-backend` | 616.29 | Working backwards: created 08/06 15:40 |
+| `fireless-war-backend` | 744.00 | Existed before August → a full UTC month, hence the .00 |
+| September meter, 1.72 | | ÷ 3 services = 34 min past UTC midnight, matching the screenshot |
+
+★ The model also reconciles fireless-war's Render request log, which shows the service
+**repeatedly asleep** (gaps of 3–8 hours, far past the 15-minute threshold) and so
+contradicts "744 = never slept" — unless what is being timed is the instance rather than the
+process.
+
+**If true**: keep-alive costs nothing against the quota (the clock runs whether or not it
+sleeps), and the only way to reduce instance-hours is to run fewer services. **The test**:
+watch how fast the Billing meter climbs — roughly one hour per service per elapsed hour means
+this model, roughly one hour total means it does not.
 
 **B. No keep-alive** (a deployment with no to-the-second releases, where a one-minute wait is fine)
 
