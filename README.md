@@ -322,7 +322,12 @@ project **不會**各自拿到一份額度。所以窗口要先扣掉同一個�
    - **Request method** 改成 `POST`（每日任務才要；保活／暖機維持 GET）
    - **Headers** 新增一列：名稱 `X-Job-Token`，值是 Render 上那個 `JOB_TOKEN`
    - 開啟失敗通知，寄到你的信箱
-7. 存檔，按 **Run now** 測一次，展開執行紀錄看回應
+7. 存檔，然後從工作的詳情／編輯頁跑一次手動執行，展開執行紀錄看回應
+
+★ **手動執行要在第一次排程觸發之前做完**，而且它跟下面的 curl 驗的**不是同一件事**：
+curl 驗的是「token 本身對不對」，手動執行驗的是「**你在介面上填的 header 有沒有
+真的送出去**」。header 名稱打錯、值前後多一個空白、method 忘了改成 POST——這三種
+curl 一個都測不出來，只會在第一次排程執行時失敗，而排程只會告訴你「失敗」。
 
 `JOB_TOKEN` 的產生方式見 Part G。**這個值要跟 Render 環境變數裡的完全一致**，
 不一致的話這支回 401，而排程只會告訴你「失敗」，不會告訴你是 token 錯了——
@@ -773,7 +778,14 @@ and no keep-alive: **job 2 alone is enough**.
    - **Request method** → `POST` (daily batch only; keep-alive and warm-up stay GET)
    - **Headers** → add `X-Job-Token` with the `JOB_TOKEN` value from Render
    - Turn on failure notifications to your email
-7. Save, press **Run now**, and open the execution history to read the response
+7. Save, then trigger a manual run from the job's detail/edit page and open the execution
+   history to read the response
+
+★ **Do the manual run before the first scheduled execution**, and note it does **not** test
+the same thing as the curl below: curl checks that the token itself is right, while a manual
+run checks that **the header you typed into the UI is actually being sent**. A misspelt
+header name, a stray space around the value, a method left as GET — curl catches none of
+those. They surface on the first scheduled run, and the scheduler only reports "failed".
 
 `JOB_TOKEN` is generated in Part G. **It must match the Render environment variable
 exactly** — a mismatch returns 401, and the scheduler will only tell you "failed", not that
