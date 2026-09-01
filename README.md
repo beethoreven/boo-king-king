@@ -252,6 +252,27 @@ fetch(window.__BOOKING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
 ★ 保活**只能打 `/api/health`**。打 `/api/ready` 會連資料庫，等於每 10 分鐘叫醒
 Neon 一次，直接把每月 100 CU-hours 燒光。
 
+★ **750 小時是整個 workspace 共用的，不是這個服務的。** 階層是
+workspace → project → environment → service，額度和帳單都在最上層——分成不同的
+project **不會**各自拿到一份額度。所以窗口要先扣掉同一個帳號裡其他服務的用量。
+
+先去 <https://dashboard.render.com/billing> 看 **Monthly Included Usage** 的
+Free instance hours，以及上個月的 Usage 頁（免費也有，金額是 $0 但**時數看得到**），
+把別的服務吃掉多少查出來，再回頭決定窗口：
+
+| 窗口 | cron | 本服務用量 |
+|---|---|---|
+| 06:00–02:00（20 小時） | `*/10 6-23,0-1 * * *` | 620 |
+| 09:00–01:00（16 小時） | `*/10 9-23,0 * * *` | 496 |
+| 12:00–01:00（13 小時） | `*/10 12-23,0 * * *` | 403 |
+
+三個都把 00:00 包在裡面，所以都不需要暖機工作。**留至少 100 小時餘裕**——
+超過額度不是降速，是整個 workspace 的免費服務一起停用到下個月，而 Render
+**不保證會事先通知**（文件裡沒有提到這種通知）。
+
+★ 實例：2026-09 時這個帳號裡還有 `fireless-war-backend`，七月用掉 116.86 小時。
+620 + 117 = 737/750，只剩 13 小時——所以步經徑實際採用的是 16 小時的窗口。
+
 **乙、不保活**（沒有壓秒需求、慢一分鐘無所謂的部署）
 
 | | 工作 1：暖機 | 工作 2：每日任務 |
@@ -652,6 +673,31 @@ arrives and no warm-up is needed. Quota use is 20 × 31 = **620 / 750 hours**.
 
 ★ Keep-alive **must hit `/api/health`**. `/api/ready` touches the database, which would
 wake Neon every 10 minutes and burn the whole 100 CU-hours monthly allowance.
+
+★ **The 750 hours belong to the whole workspace, not to this service.** The hierarchy is
+workspace → project → environment → service, and both quota and billing sit at the top —
+splitting services into separate projects does **not** give each one its own allowance. So
+the window has to be chosen after subtracting whatever else in that account is running.
+
+Check <https://dashboard.render.com/billing> — the **Monthly Included Usage** section for
+free instance hours, plus a past month's Usage page (free workspaces get these too; the
+amount is $0 but **the hours are shown**) — to find out what the other services consume,
+then pick the window:
+
+| Window | cron | This service's usage |
+|---|---|---|
+| 06:00–02:00 (20 h) | `*/10 6-23,0-1 * * *` | 620 |
+| 09:00–01:00 (16 h) | `*/10 9-23,0 * * *` | 496 |
+| 12:00–01:00 (13 h) | `*/10 12-23,0 * * *` | 403 |
+
+All three contain 00:00, so none of them needs a warm-up job. **Leave at least 100 hours of
+margin** — going over does not throttle anything, it suspends every free service in the
+workspace until the next month, and Render **does not promise a warning first** (no such
+notification is mentioned in the docs).
+
+★ A worked example: as of 2026-09 this account also held `fireless-war-backend`, which used
+116.86 hours in July. 620 + 117 = 737/750 leaves only 13 hours, which is why 步經徑 runs the
+16-hour window instead.
 
 **B. No keep-alive** (a deployment with no to-the-second releases, where a one-minute wait is fine)
 
