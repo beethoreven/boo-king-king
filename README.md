@@ -11,7 +11,7 @@
 | 子系統 | Repo | 部署 |
 |---|---|---|
 | 後端 API | [`booking-king-backend`](https://github.com/beethoreven/booking-king-backend) | Render（`https://booking-king-backend.onrender.com`） |
-| 前端網站 | [`booking-king-web`](https://github.com/beethoreven/booking-king-web) | Cloudflare Workers（`https://booking-king-web.beethoreven.workers.dev`） |
+| 前端網站 | [`booking-king-web`](https://github.com/beethoreven/booking-king-web) | Cloudflare Workers（`https://booking-king.tutor-arthur.workers.dev`） |
 
 資料庫是 Neon Postgres，開在 **ap-southeast-1（Singapore）**，與 Render 同區。這不是效能微調而是前提：姊妹專案 zh-cn-to-tw 實測，兩端跨區時單次查詢 1.76 秒，同區後 0.03 秒，差 59 倍。本專案上線後實測 `/api/ready` 為 0.21 秒，符合同區預期。
 
@@ -89,7 +89,7 @@ Google Cloud Console → Credentials → **Create OAuth client ID** → 類型�
 ```
 http://localhost:5173
 http://127.0.0.1:5173
-https://booking-king-web.beethoreven.workers.dev
+https://booking-king.tutor-arthur.workers.dev
 ```
 
 ★ 結尾**不要**加斜線。
@@ -169,10 +169,10 @@ CORS 是否設對：
 
 ```bash
 curl -i -X OPTIONS https://booking-king-backend.onrender.com/api/mmg \
-  -H "Origin: https://booking-king-web.beethoreven.workers.dev" \
+  -H "Origin: https://booking-king.tutor-arthur.workers.dev" \
   -H "Access-Control-Request-Method: GET"
 ```
-回應要含 `access-control-allow-origin: https://booking-king-web.beethoreven.workers.dev`。
+回應要含 `access-control-allow-origin: https://booking-king.tutor-arthur.workers.dev`。
 沒有這一行就是 `ALLOWED_ORIGINS` 填錯，最常見的是結尾多一個斜線。
 
 **瀏覽器端驗證**：打開前端，在主控台執行
@@ -495,7 +495,7 @@ BuJingJing doubles as the **demo and development environment** for this system. 
 | Subsystem | Repo | Deployment |
 |---|---|---|
 | Backend API | [`booking-king-backend`](https://github.com/beethoreven/booking-king-backend) | Render (`https://booking-king-backend.onrender.com`) |
-| Frontend | [`booking-king-web`](https://github.com/beethoreven/booking-king-web) | Cloudflare Workers (`https://booking-king-web.beethoreven.workers.dev`) |
+| Frontend | [`booking-king-web`](https://github.com/beethoreven/booking-king-web) | Cloudflare Workers (`https://booking-king.tutor-arthur.workers.dev`) |
 
 The database is Neon Postgres in **ap-southeast-1 (Singapore)**, the same region as Render. This is a precondition rather than a performance tweak: measured on the sister project zh-cn-to-tw, a single query cost 1.76 s cross-region and 0.03 s same-region — a factor of 59. Measured here after deployment, `/api/ready` returns in 0.21 s, consistent with same-region.
 
@@ -573,7 +573,7 @@ Google Cloud Console → Credentials → **Create OAuth client ID** → type **W
 ```
 http://localhost:5173
 http://127.0.0.1:5173
-https://booking-king-web.beethoreven.workers.dev
+https://booking-king.tutor-arthur.workers.dev
 ```
 
 ★ **No** trailing slash.
@@ -653,10 +653,10 @@ Whether CORS is right:
 
 ```bash
 curl -i -X OPTIONS https://booking-king-backend.onrender.com/api/mmg \
-  -H "Origin: https://booking-king-web.beethoreven.workers.dev" \
+  -H "Origin: https://booking-king.tutor-arthur.workers.dev" \
   -H "Access-Control-Request-Method: GET"
 ```
-The response must contain `access-control-allow-origin: https://booking-king-web.beethoreven.workers.dev`.
+The response must contain `access-control-allow-origin: https://booking-king.tutor-arthur.workers.dev`.
 Its absence means `ALLOWED_ORIGINS` is wrong — most often a trailing slash.
 
 **From the browser**: open the frontend and run in the console
