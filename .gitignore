@@ -1,7 +1,14 @@
+# macOS Finder 的視窗狀態，跟專案無關。每次用 Finder 開這個資料夾就會變，
+# 沒擋的話會一直搭別的 commit 順風車進版控——實際上已經進去過兩次。
+.DS_Store
 
-# 設計畫布的產出檔：2.4MB，內含整個編輯器，每次重新產生都會整份變動。
-# 來源是同目錄的 *.dc.html 與 canvas.json，隨時可以重新產生，不進版控。
-design/booking-king-screens.html
+# 設計稿。跟實際做出來的介面已經對不上，留在本機當參考就好。
+# 檔案沒有被刪，只是不再進版控；要翻舊版用 git log -- design/ 還找得回來。
+design/
 
 # 跨 session 溝通用的臨時文件（報告、提案、討論稿）。
 scratch/
+
+# Claude Code 的個人設定（每台機器不一樣，不該共用）。
+# .claude/launch.json 是專案共用的預覽伺服器設定，那個要留在版控裡。
+.claude/settings.local.json
