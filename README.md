@@ -4,7 +4,7 @@
 
 「步經徑」劇本殺預約系統的總覽 repo，透過 git submodule 把前後端掛在一起，方便一次 `clone` 齊全部程式碼。這個 repo 本身**不會被部署**——兩個子系統各自連到自己的 repo 做部署（見下表）。各子系統的技術細節與架構決策，請見各自 repo 的 README。
 
-步經徑同時是這套系統的**展示版與開發環境**。之後每一家合作店家會是「同一份程式碼 + 自己的 Render / Neon / Cloudflare 帳號」，不是另外分支或另一包程式碼。
+步經徑同時是這套系統的**展示版與開發環境**。之後每一家合作店家共用同一組 repo，搭配自己的 Render / Neon / Cloudflare。**後端只有一條 `main`**，店與店的差異放在那家店自己資料庫裡的設定表；**前端每家店一條 branch**，因為前端的差異是「畫面不該存在」而不是「邏輯不該執行」，刪除表達得了、開關表達不了。
 
 ### 子系統
 
@@ -486,9 +486,9 @@ advisory lock 是交易層級的，呼叫端 commit 時自動釋放，就算行�
 
 ## English
 
-The project-overview repo for **BuJingJing** (步經徑), a booking system for script-murder game venues, wiring its frontend and backend together via git submodules so the whole codebase can be pulled with a single `clone`. This repo itself **is never deployed** — each subsystem connects to its own repo for deployment (see the table below). For technical details and architecture decisions, see each subsystem's own README.
+The project-overview repo for **booking-king** (步經徑), a booking system for script-murder game venues, wiring its frontend and backend together via git submodules so the whole codebase can be pulled with a single `clone`. This repo itself **is never deployed** — each subsystem connects to its own repo for deployment (see the table below). For technical details and architecture decisions, see each subsystem's own README.
 
-BuJingJing doubles as the **demo and development environment** for this system. Each partner venue added later gets *the same code* plus its own Render / Neon / Cloudflare accounts — not a branch, and not a separate copy of the code.
+booking-king doubles as the **demo and development environment** for this system. Each partner venue added later shares the same repos plus its own Render / Neon / Cloudflare. **The backend has a single `main`** — per-venue differences live in a settings table inside that venue's own database. **The frontend keeps one branch per venue**, because its differences are screens that should not exist at all, not logic that should be skipped.
 
 ### Subsystems
 
@@ -741,7 +741,7 @@ Round-the-clock, so the service is always awake: the daily batch never meets a c
 and no warm-up is needed. Quota use is 24 × 31 = **744 / 750 hours** — one service very
 nearly exhausts the allowance on its own.
 
-★ To conserve quota, narrow the window using the table below. 步經徑 deliberately does not;
+★ To conserve quota, narrow the window using the table below. booking-king deliberately does not;
 the reasoning follows.
 
 ★ Keep-alive **must hit `/api/health`**. `/api/ready` touches the database, which would
@@ -819,7 +819,7 @@ docs say suspension, the Billing page says charges, and neither happened. That s
 limit went unenforced once; it does not say it always will. Watch the Monthly Included
 Usage meter rather than reasoning about it.
 
-★ **步經徑 runs round-the-clock (744) — the owner's call.** Setting it knowing the
+★ **booking-king runs round-the-clock (744) — the owner's call.** Setting it knowing the
 workspace is already far over the allowance is deliberate: this Render account is his own, so
 the downside is bounded, and **until it actually blows up once nobody knows what blowing up
 looks like** — suspension, a charge, whether there is any warning. The docs and the Billing
@@ -866,7 +866,7 @@ and no keep-alive: **job 2 alone is enough**.
 
 1. Register and sign in at <https://cron-job.org> (free, no limit on the number of jobs)
 2. **Create cronjob**
-3. **Title** — make the venue recognisable, e.g. `步經徑 · daily batch`
+3. **Title** — make the venue recognisable, e.g. `booking-king · daily batch`
 4. **URL** — from the table above
 5. **Schedule** — switch to expert mode and paste the cron string from the table
 6. Expand **Advanced**:
@@ -985,7 +985,7 @@ The code **does not change**. Create a fresh set of accounts and services for th
 
 ★ Schedules can all live in one cron-job.org account rather than being split per venue (reasoning in Part I). The cache cannot.
 ★ Separate accounts mean separate free quotas (Render's 750 instance-hours and Neon's 100 CU-hours are both counted per account).
-★ **Deploy BuJingJing first, confirm it, then the rest.** Render allows disabling auto-deploy per service. The price of a single codebase is that one bad release reaches every venue; this procedure is what holds that back.
+★ **Deploy booking-king first, confirm it, then the rest.** Render allows disabling auto-deploy per service. The price of a single codebase is that one bad release reaches every venue; this procedure is what holds that back.
 ★ Room for per-venue theming already exists: `style.css`'s `:root` is a set of design tokens, so changing colours means overriding variables rather than editing code, and `brand-mark.png` / `favicon.png` are file swaps.
 
 ### Known limitations
