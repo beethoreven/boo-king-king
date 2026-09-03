@@ -1,6 +1,6 @@
-[submodule "booking-king-backend"]
-	path = booking-king-backend
-	url = git@github.com-beethoreven:beethoreven/booking-king-backend.git
-[submodule "booking-king-web"]
-	path = booking-king-web
-	url = git@github.com-beethoreven:beethoreven/booking-king-web.git
+[submodule "boo-king-king-backend"]
+	path = boo-king-king-backend
+	url = git@github.com-beethoreven:beethoreven/boo-king-king-backend.git
+[submodule "boo-king-king-web"]
+	path = boo-king-king-web
+	url = git@github.com-beethoreven:beethoreven/boo-king-king-web.git

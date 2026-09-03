@@ -1,4 +1,4 @@
-# booking-king
+# boo-king-king
 
 ## 中文
 
@@ -10,8 +10,8 @@
 
 | 子系統 | Repo | 部署 |
 |---|---|---|
-| 後端 API | [`booking-king-backend`](https://github.com/beethoreven/booking-king-backend) | Render（`https://booking-king-backend.onrender.com`） |
-| 前端網站 | [`booking-king-web`](https://github.com/beethoreven/booking-king-web) | Cloudflare Workers（`https://booking-king.tutor-arthur.workers.dev`） |
+| 後端 API | [`boo-king-king-backend`](https://github.com/beethoreven/boo-king-king-backend) | Render（`https://boo-king-king-tutor-arthur.onrender.com`） |
+| 前端網站 | [`boo-king-king-web`](https://github.com/beethoreven/boo-king-king-web) | Cloudflare Workers（`https://tutor-arthur.boo-king-king.workers.dev`） |
 
 資料庫是 Neon Postgres，開在 **ap-southeast-1（Singapore）**，與 Render 同區。這不是效能微調而是前提：姊妹專案 zh-cn-to-tw 實測，兩端跨區時單次查詢 1.76 秒，同區後 0.03 秒，差 59 倍。本專案上線後實測 `/api/ready` 為 0.21 秒，符合同區預期。
 
@@ -20,7 +20,7 @@
 **第一次拿到全部程式碼：**
 
 ```bash
-git clone --recurse-submodules git@github.com-beethoreven:beethoreven/booking-king.git
+git clone --recurse-submodules git@github.com-beethoreven:beethoreven/boo-king-king.git
 ```
 
 **已經 clone 過，只是要把子模組抓齊：**
@@ -32,11 +32,11 @@ git submodule update --init --recursive
 **更新某個子模組到它自己 repo 的最新版本：**
 
 ```bash
-cd booking-king-backend   # 或 booking-king-web
+cd boo-king-king-backend   # 或 boo-king-king-web
 git pull origin main
 cd ..
-git add booking-king-backend
-git commit -m "Update booking-king-backend submodule pointer"
+git add boo-king-king-backend
+git commit -m "Update boo-king-king-backend submodule pointer"
 ```
 
 最後這個 `git add` + `commit` 不能省略——沒做的話，子模組本機檔案雖然是新的，但這個 wrapper repo 記錄的「該指向哪個 commit」還是舊的，別人 `clone` 這個 repo 還是會抓到舊版本。
@@ -56,19 +56,19 @@ git commit -m "Update booking-king-backend submodule pointer"
 **順序不能反**：先推兩個 submodule，再推 meta。meta 記錄的是 submodule 的 commit，反過來會指向 GitHub 上還不存在的 commit。
 
 ```bash
-cd booking-king-backend
-git remote add origin git@github.com-beethoreven:beethoreven/booking-king-backend.git
+cd boo-king-king-backend
+git remote add origin git@github.com-beethoreven:beethoreven/boo-king-king-backend.git
 git branch -M main && git push -u origin main
 
-cd ../booking-king-web
-git remote add origin git@github.com-beethoreven:beethoreven/booking-king-web.git
+cd ../boo-king-king-web
+git remote add origin git@github.com-beethoreven:beethoreven/boo-king-king-web.git
 git branch -M main && git push -u origin main
 
 cd ..
-git submodule set-url booking-king-backend git@github.com-beethoreven:beethoreven/booking-king-backend.git
-git submodule set-url booking-king-web git@github.com-beethoreven:beethoreven/booking-king-web.git
+git submodule set-url boo-king-king-backend git@github.com-beethoreven:beethoreven/boo-king-king-backend.git
+git submodule set-url boo-king-king-web git@github.com-beethoreven:beethoreven/boo-king-king-web.git
 git add .gitmodules && git commit -m "Point submodules at GitHub"
-git remote add origin git@github.com-beethoreven:beethoreven/booking-king.git
+git remote add origin git@github.com-beethoreven:beethoreven/boo-king-king.git
 git branch -M main && git push -u origin main
 ```
 
@@ -89,7 +89,7 @@ Google Cloud Console → Credentials → **Create OAuth client ID** → 類型�
 ```
 http://localhost:5173
 http://127.0.0.1:5173
-https://booking-king.tutor-arthur.workers.dev
+https://tutor-arthur.boo-king-king.workers.dev
 ```
 
 ★ 結尾**不要**加斜線。
@@ -98,7 +98,7 @@ https://booking-king.tutor-arthur.workers.dev
 
 #### Part D. Render 後端
 
-**New → Web Service** → 連 GitHub → 選 `booking-king-backend`
+**New → Web Service** → 連 GitHub → 選 `boo-king-king-backend`
 
 | 欄位 | 值 |
 |---|---|
@@ -112,7 +112,7 @@ https://booking-king.tutor-arthur.workers.dev
 
 #### Part E. Cloudflare 前端
 
-左側 **Compute → Workers & Pages → 右上角「Create application」** → 連 GitHub → 選 `booking-king-web`
+左側 **Compute → Workers & Pages → 右上角「Create application」** → 連 GitHub → 選 `boo-king-king-web`
 
 ★ Cloudflare 已經把 Pages 併進 Workers，所以：
 - 畫面標題會寫「Create a **Worker**」，那是對的，**不要去找 Pages**
@@ -121,7 +121,7 @@ https://booking-king.tutor-arthur.workers.dev
 
 | 欄位 | 值 |
 |---|---|
-| Project name | `booking-king-web` |
+| Project name | `boo-king-king-web` |
 | **Build command** | **留空**（純靜態，沒有建置步驟） |
 | Deploy command | `npx wrangler deploy`（預設值） |
 | Builds for non-production branches | **取消勾選**（只有一條 main） |
@@ -134,7 +134,7 @@ https://booking-king.tutor-arthur.workers.dev
 
 1. **Render** 的 `ALLOWED_ORIGINS` = 前端網址
 2. **Google OAuth** 的授權來源加上前端網址
-3. **`index.html`** 的 `__BOOKING_KING_API_BASE__` = 後端網址，改完 `git push`，Cloudflare 會自動重新部署
+3. **`index.html`** 的 `__BOO_KING_KING_API_BASE__` = 後端網址，改完 `git push`，Cloudflare 會自動重新部署
 
 #### Part G. 環境變數總覽（Render）
 
@@ -156,29 +156,29 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 #### Part H. 驗證
 
 ```bash
-curl https://booking-king-backend.onrender.com/api/health
+curl https://boo-king-king-tutor-arthur.onrender.com/api/health
 ```
 預期 `{"status":"ok"}`。這支**刻意不碰資料庫**，所以它能分辨「服務掛了」與「資料庫比較慢」。
 
 ```bash
-curl https://booking-king-backend.onrender.com/api/ready
+curl https://boo-king-king-tutor-arthur.onrender.com/api/ready
 ```
 預期 `{"status":"ok","database":"ok"}`。這支會連資料庫。
 
 CORS 是否設對：
 
 ```bash
-curl -i -X OPTIONS https://booking-king-backend.onrender.com/api/mmg \
-  -H "Origin: https://booking-king.tutor-arthur.workers.dev" \
+curl -i -X OPTIONS https://boo-king-king-tutor-arthur.onrender.com/api/mmg \
+  -H "Origin: https://tutor-arthur.boo-king-king.workers.dev" \
   -H "Access-Control-Request-Method: GET"
 ```
-回應要含 `access-control-allow-origin: https://booking-king.tutor-arthur.workers.dev`。
+回應要含 `access-control-allow-origin: https://tutor-arthur.boo-king-king.workers.dev`。
 沒有這一行就是 `ALLOWED_ORIGINS` 填錯，最常見的是結尾多一個斜線。
 
 **瀏覽器端驗證**：打開前端，在主控台執行
 
 ```js
-fetch(window.__BOOKING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
+fetch(window.__BOO_KING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
 ```
 
 得到 **401 就是對的**——那代表請求成功穿過 CORS 到達後端，只是沒帶登入憑證。
@@ -276,7 +276,7 @@ instance-hours、還大概率留下一筆逾時的失敗紀錄，而換到的東
 ##### 驗證
 
 ```bash
-curl -X POST https://booking-king-backend.onrender.com/api/jobs/weekly \
+curl -X POST https://boo-king-king-tutor-arthur.onrender.com/api/jobs/weekly \
   -H "X-Job-Token: <你的 JOB_TOKEN>"
 ```
 
@@ -309,7 +309,7 @@ project **不會**各自拿到一份額度。所以窗口要先扣掉同一個�
 **不保證會事先通知**（文件裡沒有提到這種通知）。
 
 ★ 實例：2026-08 這個帳號的三個服務分別跑了 `fireless-war-backend` 744 小時
-（整月一秒沒睡）、`zh-cn-to-tw-backend` 616 小時、`booking-king-backend` 20 小時，
+（整月一秒沒睡）、`zh-cn-to-tw-backend` 616 小時、`boo-king-king-backend` 20 小時，
 合計 **1,380 小時**。窗口再怎麼調都救不了這種量級——步經徑那 496 或 620 的差別，
 在這個倍數面前沒有意義，真正該處理的是那兩個服務。
 
@@ -380,7 +380,7 @@ curl 一個都測不出來，只會在第一次排程執行時失敗，而排程
 ##### 驗證
 
 ```bash
-curl -X POST https://booking-king-backend.onrender.com/api/jobs/daily \
+curl -X POST https://boo-king-king-tutor-arthur.onrender.com/api/jobs/daily \
   -H "X-Job-Token: <你的 JOB_TOKEN>"
 ```
 
@@ -434,7 +434,7 @@ DETAIL: Process 1116 waits for AccessExclusiveLock on relation 237625;
 修法是在原本那把鎖裡面再加一把**跨行程**的鎖：
 
 ```sql
-SELECT pg_advisory_xact_lock(hashtext('booking-king:ensure_schema'))
+SELECT pg_advisory_xact_lock(hashtext('boo-king-king:ensure_schema'))
 ```
 
 advisory lock 是交易層級的，呼叫端 commit 時自動釋放，就算行程中途死掉也會放。第二個 worker 會擋在這一行，等第一個建完才進去，然後發現該有的都有了——那一段本來就是冪等的。以 `--workers 4` 重測：四個 worker 全部啟動、0 個死結、12 個併發 `/api/ready` 全部 200。
@@ -486,16 +486,16 @@ advisory lock 是交易層級的，呼叫端 commit 時自動釋放，就算行�
 
 ## English
 
-The project-overview repo for **booking-king** (步經徑), a booking system for script-murder game venues, wiring its frontend and backend together via git submodules so the whole codebase can be pulled with a single `clone`. This repo itself **is never deployed** — each subsystem connects to its own repo for deployment (see the table below). For technical details and architecture decisions, see each subsystem's own README.
+The project-overview repo for **boo-king-king** (步經徑), a booking system for script-murder game venues, wiring its frontend and backend together via git submodules so the whole codebase can be pulled with a single `clone`. This repo itself **is never deployed** — each subsystem connects to its own repo for deployment (see the table below). For technical details and architecture decisions, see each subsystem's own README.
 
-booking-king doubles as the **demo and development environment** for this system. Each partner venue added later shares the same repos plus its own Render / Neon / Cloudflare. **The backend has a single `main`** — per-venue differences live in a settings table inside that venue's own database. **The frontend keeps one branch per venue**, because its differences are screens that should not exist at all, not logic that should be skipped.
+boo-king-king doubles as the **demo and development environment** for this system. Each partner venue added later shares the same repos plus its own Render / Neon / Cloudflare. **The backend has a single `main`** — per-venue differences live in a settings table inside that venue's own database. **The frontend keeps one branch per venue**, because its differences are screens that should not exist at all, not logic that should be skipped.
 
 ### Subsystems
 
 | Subsystem | Repo | Deployment |
 |---|---|---|
-| Backend API | [`booking-king-backend`](https://github.com/beethoreven/booking-king-backend) | Render (`https://booking-king-backend.onrender.com`) |
-| Frontend | [`booking-king-web`](https://github.com/beethoreven/booking-king-web) | Cloudflare Workers (`https://booking-king.tutor-arthur.workers.dev`) |
+| Backend API | [`boo-king-king-backend`](https://github.com/beethoreven/boo-king-king-backend) | Render (`https://boo-king-king-tutor-arthur.onrender.com`) |
+| Frontend | [`boo-king-king-web`](https://github.com/beethoreven/boo-king-king-web) | Cloudflare Workers (`https://tutor-arthur.boo-king-king.workers.dev`) |
 
 The database is Neon Postgres in **ap-southeast-1 (Singapore)**, the same region as Render. This is a precondition rather than a performance tweak: measured on the sister project zh-cn-to-tw, a single query cost 1.76 s cross-region and 0.03 s same-region — a factor of 59. Measured here after deployment, `/api/ready` returns in 0.21 s, consistent with same-region.
 
@@ -504,7 +504,7 @@ The database is Neon Postgres in **ap-southeast-1 (Singapore)**, the same region
 **First time cloning everything:**
 
 ```bash
-git clone --recurse-submodules git@github.com-beethoreven:beethoreven/booking-king.git
+git clone --recurse-submodules git@github.com-beethoreven:beethoreven/boo-king-king.git
 ```
 
 **Already cloned, just need the submodules:**
@@ -516,11 +516,11 @@ git submodule update --init --recursive
 **Updating a submodule to the latest commit on its own repo:**
 
 ```bash
-cd booking-king-backend   # or booking-king-web
+cd boo-king-king-backend   # or boo-king-king-web
 git pull origin main
 cd ..
-git add booking-king-backend
-git commit -m "Update booking-king-backend submodule pointer"
+git add boo-king-king-backend
+git commit -m "Update boo-king-king-backend submodule pointer"
 ```
 
 That final `git add` + `commit` cannot be skipped — without it the submodule's local files are current but the pointer this wrapper repo records still refers to the old commit, so anyone cloning this repo still gets the old version.
@@ -540,19 +540,19 @@ All three repos **can be Private**. The frontend does not need to be public beca
 **Order matters**: push both submodules first, then the meta repo. The meta repo records submodule commits; reversed, it would point at commits that do not exist on GitHub yet.
 
 ```bash
-cd booking-king-backend
-git remote add origin git@github.com-beethoreven:beethoreven/booking-king-backend.git
+cd boo-king-king-backend
+git remote add origin git@github.com-beethoreven:beethoreven/boo-king-king-backend.git
 git branch -M main && git push -u origin main
 
-cd ../booking-king-web
-git remote add origin git@github.com-beethoreven:beethoreven/booking-king-web.git
+cd ../boo-king-king-web
+git remote add origin git@github.com-beethoreven:beethoreven/boo-king-king-web.git
 git branch -M main && git push -u origin main
 
 cd ..
-git submodule set-url booking-king-backend git@github.com-beethoreven:beethoreven/booking-king-backend.git
-git submodule set-url booking-king-web git@github.com-beethoreven:beethoreven/booking-king-web.git
+git submodule set-url boo-king-king-backend git@github.com-beethoreven:beethoreven/boo-king-king-backend.git
+git submodule set-url boo-king-king-web git@github.com-beethoreven:beethoreven/boo-king-king-web.git
 git add .gitmodules && git commit -m "Point submodules at GitHub"
-git remote add origin git@github.com-beethoreven:beethoreven/booking-king.git
+git remote add origin git@github.com-beethoreven:beethoreven/boo-king-king.git
 git branch -M main && git push -u origin main
 ```
 
@@ -573,7 +573,7 @@ Google Cloud Console → Credentials → **Create OAuth client ID** → type **W
 ```
 http://localhost:5173
 http://127.0.0.1:5173
-https://booking-king.tutor-arthur.workers.dev
+https://tutor-arthur.boo-king-king.workers.dev
 ```
 
 ★ **No** trailing slash.
@@ -582,7 +582,7 @@ https://booking-king.tutor-arthur.workers.dev
 
 #### Part D. Render backend
 
-**New → Web Service** → connect GitHub → pick `booking-king-backend`
+**New → Web Service** → connect GitHub → pick `boo-king-king-backend`
 
 | Field | Value |
 |---|---|
@@ -596,7 +596,7 @@ https://booking-king.tutor-arthur.workers.dev
 
 #### Part E. Cloudflare frontend
 
-Left sidebar **Compute → Workers & Pages → "Create application"** (top right) → connect GitHub → pick `booking-king-web`
+Left sidebar **Compute → Workers & Pages → "Create application"** (top right) → connect GitHub → pick `boo-king-king-web`
 
 ★ Cloudflare has folded Pages into Workers, so:
 - The screen is titled "Create a **Worker**" — that is correct, **do not go looking for Pages**
@@ -605,7 +605,7 @@ Left sidebar **Compute → Workers & Pages → "Create application"** (top right
 
 | Field | Value |
 |---|---|
-| Project name | `booking-king-web` |
+| Project name | `boo-king-king-web` |
 | **Build command** | **Leave empty** (static site, no build step) |
 | Deploy command | `npx wrangler deploy` (default) |
 | Builds for non-production branches | **Uncheck** (there is only `main`) |
@@ -618,7 +618,7 @@ Once both URLs exist, go back and fill in three places. **Miss any one and login
 
 1. **Render**'s `ALLOWED_ORIGINS` = the frontend URL
 2. **Google OAuth** authorized origins gains the frontend URL
-3. **`index.html`**'s `__BOOKING_KING_API_BASE__` = the backend URL, then `git push`; Cloudflare redeploys automatically
+3. **`index.html`**'s `__BOO_KING_KING_API_BASE__` = the backend URL, then `git push`; Cloudflare redeploys automatically
 
 #### Part G. Environment variables (Render)
 
@@ -640,29 +640,29 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 #### Part H. Verification
 
 ```bash
-curl https://booking-king-backend.onrender.com/api/health
+curl https://boo-king-king-tutor-arthur.onrender.com/api/health
 ```
 Expect `{"status":"ok"}`. This endpoint **deliberately never touches the database**, so it can distinguish "the service is down" from "the database is slow".
 
 ```bash
-curl https://booking-king-backend.onrender.com/api/ready
+curl https://boo-king-king-tutor-arthur.onrender.com/api/ready
 ```
 Expect `{"status":"ok","database":"ok"}`. This one does hit the database.
 
 Whether CORS is right:
 
 ```bash
-curl -i -X OPTIONS https://booking-king-backend.onrender.com/api/mmg \
-  -H "Origin: https://booking-king.tutor-arthur.workers.dev" \
+curl -i -X OPTIONS https://boo-king-king-tutor-arthur.onrender.com/api/mmg \
+  -H "Origin: https://tutor-arthur.boo-king-king.workers.dev" \
   -H "Access-Control-Request-Method: GET"
 ```
-The response must contain `access-control-allow-origin: https://booking-king.tutor-arthur.workers.dev`.
+The response must contain `access-control-allow-origin: https://tutor-arthur.boo-king-king.workers.dev`.
 Its absence means `ALLOWED_ORIGINS` is wrong — most often a trailing slash.
 
 **From the browser**: open the frontend and run in the console
 
 ```js
-fetch(window.__BOOKING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
+fetch(window.__BOO_KING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
 ```
 
 **401 is the correct result** — it means the request cleared CORS and reached the backend, carrying no credentials. `Failed to fetch` is what a CORS block looks like.
@@ -741,7 +741,7 @@ Round-the-clock, so the service is always awake: the daily batch never meets a c
 and no warm-up is needed. Quota use is 24 × 31 = **744 / 750 hours** — one service very
 nearly exhausts the allowance on its own.
 
-★ To conserve quota, narrow the window using the table below. booking-king deliberately does not;
+★ To conserve quota, narrow the window using the table below. boo-king-king deliberately does not;
 the reasoning follows.
 
 ★ Keep-alive **must hit `/api/health`**. `/api/ready` touches the database, which would
@@ -772,7 +772,7 @@ for extra instance-hours, and most likely records a timeout, in exchange for not
 ##### Verification
 
 ```bash
-curl -X POST https://booking-king-backend.onrender.com/api/jobs/weekly \
+curl -X POST https://boo-king-king-tutor-arthur.onrender.com/api/jobs/weekly \
   -H "X-Job-Token: <your JOB_TOKEN>"
 ```
 
@@ -809,7 +809,7 @@ notification is mentioned in the docs).
 
 ★ A worked example: in 2026-08 this account's three services ran
 `fireless-war-backend` for 744 hours (awake every hour of the month),
-`zh-cn-to-tw-backend` for 616, and `booking-king-backend` for 20 — **1,380 hours** in
+`zh-cn-to-tw-backend` for 616, and `boo-king-king-backend` for 20 — **1,380 hours** in
 total. No choice of window rescues a workspace at that scale: the difference between 496
 and 620 is noise against that multiple, and the other two services are the real problem.
 
@@ -819,7 +819,7 @@ docs say suspension, the Billing page says charges, and neither happened. That s
 limit went unenforced once; it does not say it always will. Watch the Monthly Included
 Usage meter rather than reasoning about it.
 
-★ **booking-king runs round-the-clock (744) — the owner's call.** Setting it knowing the
+★ **boo-king-king runs round-the-clock (744) — the owner's call.** Setting it knowing the
 workspace is already far over the allowance is deliberate: this Render account is his own, so
 the downside is bounded, and **until it actually blows up once nobody knows what blowing up
 looks like** — suspension, a charge, whether there is any warning. The docs and the Billing
@@ -866,7 +866,7 @@ and no keep-alive: **job 2 alone is enough**.
 
 1. Register and sign in at <https://cron-job.org> (free, no limit on the number of jobs)
 2. **Create cronjob**
-3. **Title** — make the venue recognisable, e.g. `booking-king · daily batch`
+3. **Title** — make the venue recognisable, e.g. `boo-king-king · daily batch`
 4. **URL** — from the table above
 5. **Schedule** — switch to expert mode and paste the cron string from the table
 6. Expand **Advanced**:
@@ -889,7 +889,7 @@ the token was wrong. Which is why the manual check below is not optional.
 ##### Verification
 
 ```bash
-curl -X POST https://booking-king-backend.onrender.com/api/jobs/daily \
+curl -X POST https://boo-king-king-tutor-arthur.onrender.com/api/jobs/daily \
   -H "X-Job-Token: <your JOB_TOKEN>"
 ```
 
@@ -946,7 +946,7 @@ DETAIL: Process 1116 waits for AccessExclusiveLock on relation 237625;
 The fix adds a **cross-process** lock inside the existing one:
 
 ```sql
-SELECT pg_advisory_xact_lock(hashtext('booking-king:ensure_schema'))
+SELECT pg_advisory_xact_lock(hashtext('boo-king-king:ensure_schema'))
 ```
 
 An advisory lock is transaction-scoped, released on the caller's commit, and released even if the process dies. The second worker blocks there until the first finishes, then finds the schema already current — that section is idempotent by design. Re-verified at `--workers 4`: all four booted, zero deadlocks, twelve concurrent `/api/ready` all returned 200.
@@ -985,7 +985,7 @@ The code **does not change**. Create a fresh set of accounts and services for th
 
 ★ Schedules can all live in one cron-job.org account rather than being split per venue (reasoning in Part I). The cache cannot.
 ★ Separate accounts mean separate free quotas (Render's 750 instance-hours and Neon's 100 CU-hours are both counted per account).
-★ **Deploy booking-king first, confirm it, then the rest.** Render allows disabling auto-deploy per service. The price of a single codebase is that one bad release reaches every venue; this procedure is what holds that back.
+★ **Deploy boo-king-king first, confirm it, then the rest.** Render allows disabling auto-deploy per service. The price of a single codebase is that one bad release reaches every venue; this procedure is what holds that back.
 ★ Room for per-venue theming already exists: `style.css`'s `:root` is a set of design tokens, so changing colours means overriding variables rather than editing code, and `brand-mark.png` / `favicon.png` are file swaps.
 
 ### Known limitations
