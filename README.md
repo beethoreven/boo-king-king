@@ -254,6 +254,7 @@ fetch(`${window.__BOO_KING_KING_API_HOST__}/v/${window.__BOO_KING_KING_VARIANT__
 
 ★ 要省額度就縮窗口，見下方的窗口對照表。步經徑刻意不縮，理由也在下面。
 
+★ 保活的網址**不要帶 `/v/<variant>` 前綴**，寫成 `<backend>/api/health` 就好。它是唯一不需要前綴的路徑；帶了前綴，從別家店複製排程時只改主機、忘了改前綴，就會回 404「打錯服務了」（2026-10-24 demo 實際踩到）。
 ★ 保活**只能打 `/api/health`**。打 `/api/ready` 會連資料庫，等於每 10 分鐘叫醒
 Neon 一次，直接把每月 100 CU-hours 燒光。
 
@@ -751,6 +752,7 @@ nearly exhausts the allowance on its own.
 ★ To conserve quota, narrow the window using the table below. boo-king-king deliberately does not;
 the reasoning follows.
 
+★ The keep-alive URL should **not carry the `/v/<variant>` prefix** — just `<backend>/api/health`. It is the one path that needs no prefix; with one, copying a job from another venue and changing only the host leaves the old prefix behind and gets 404 "wrong service" (hit on the demo, 2026-10-24).
 ★ Keep-alive **must hit `/api/health`**. `/api/ready` touches the database, which would
 wake Neon every 10 minutes and burn the whole 100 CU-hours monthly allowance.
 
