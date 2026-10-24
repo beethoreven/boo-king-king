@@ -468,11 +468,13 @@ advisory lock 是交易層級的，呼叫端 commit 時自動釋放，就算行�
 
 ### 之後每加一家店
 
-程式碼**不動**。新開一組屬於那家店的帳號與服務：
+後端程式碼**不動**，前端看功能組態：跟 `main`（步經徑）一樣就直接用 `main`，有拔掉功能就從**組態相同的那條分支**分出來、只換品牌。目前的分支：`main`＝demo（步經徑）、`eli`、`tutor-arthur`（功能跟 eli 相同、品牌是步經徑）。之後 `main` 的修改要合進每一條分支。
+
+新開一組屬於那家店的帳號與服務：
 
 1. 那家店自己的 Google 帳號 → 自己的 Neon project（Singapore）
 2. 自己的 Render service，**指向同一個 repo、同一條 `main`**，只有環境變數不同
-3. 自己的 Cloudflare 專案，掛自己的網域
+3. 自己的 Cloudflare Worker，Production branch 選那家店的分支。★ 接上 Git 之後不會自己建置，要那條分支再 push 一次（可以是空 commit）
 4. 到 cron-job.org 加那家店的排程（見 Part I）——**這一步很容易漏，漏了不會有任何錯誤訊息**，只會讓場次狀態慢慢失準、候補永遠不過期
 
 ★ 排程可以全部設在同一個 cron-job.org 帳號，不必跟著店家分（理由見 Part I）。快取不行。
@@ -985,11 +987,13 @@ An honest assessment: the risk this actually removes in this system is **small**
 
 ### Adding each additional venue
 
-The code **does not change**. Create a fresh set of accounts and services for that venue:
+The backend code **does not change**. The frontend depends on the feature configuration: identical to `main` (步經徑) means using `main` as is; with features removed, branch off **the branch with the same configuration** and change only the branding. Current branches: `main` = the demo (步經徑), `eli`, `tutor-arthur` (eli's features, 步經徑's branding). Every change on `main` must then be merged into each branch.
+
+Create a fresh set of accounts and services for that venue:
 
 1. That venue's own Google account → its own Neon project (Singapore)
 2. Its own Render service, **pointing at the same repo and the same `main`**, differing only in environment variables
-3. Its own Cloudflare project, on its own domain
+3. Its own Cloudflare Worker, with the production branch set to that venue's branch. ★ Connecting Git does not trigger a build; the branch needs one more push (an empty commit will do)
 4. Add that venue's schedules on cron-job.org (see Part I) — **this step is easy to forget and fails silently**; nothing errors, the session statuses just drift out of date and waitlist entries never expire
 
 ★ Schedules can all live in one cron-job.org account rather than being split per venue (reasoning in Part I). The cache cannot.
