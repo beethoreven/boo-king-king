@@ -125,7 +125,8 @@ https://tutor-arthur-demo.boo-king-king.workers.dev
 | Project name | `tutor-arthur-demo`（＝ `wrangler.jsonc` 的 `name`，不一致會建置失敗） |
 | **Build command** | **留空**（純靜態，沒有建置步驟） |
 | Deploy command | `npx wrangler deploy`（預設值） |
-| Builds for non-production branches | **取消勾選**（只有一條 main） |
+| Enable Preview builds | **取消勾選**。勾著的話推其他 branch（例如 `eli`）也會在這個 Worker 底下建預覽版（舊版介面叫 Builds for non-production branches） |
+| Protect with Cloudflare Access | **不要勾**。勾了訪客要先登入 Cloudflare Access 才看得到網站 |
 | API token | `Create new token`（讓它自動建） |
 | Variable name / value | **留空**（那是給 Worker 程式用的，靜態站不需要） |
 
@@ -612,7 +613,8 @@ Left sidebar **Compute → Workers & Pages → "Create application"** (top right
 | Project name | `tutor-arthur-demo` (= `name` in `wrangler.jsonc`; a mismatch fails the build) |
 | **Build command** | **Leave empty** (static site, no build step) |
 | Deploy command | `npx wrangler deploy` (default) |
-| Builds for non-production branches | **Uncheck** (there is only `main`) |
+| Enable Preview builds | **Uncheck**. Left on, pushing any other branch (e.g. `eli`) also builds a preview under this Worker (older UI called it Builds for non-production branches) |
+| Protect with Cloudflare Access | **Leave unchecked**. Checked, visitors must sign in through Cloudflare Access before they can see the site |
 | API token | `Create new token` (let it generate one) |
 | Variable name / value | **Leave empty** (those are for Worker code; a static site needs none) |
 
