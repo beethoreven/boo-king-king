@@ -10,8 +10,8 @@
 
 | 子系統 | Repo | 部署 |
 |---|---|---|
-| 後端 API | [`boo-king-king-backend`](https://github.com/beethoreven/boo-king-king-backend) | Render（`https://boo-king-king-tutor-arthur.onrender.com`） |
-| 前端網站 | [`boo-king-king-web`](https://github.com/beethoreven/boo-king-king-web) | Cloudflare Workers（`https://tutor-arthur.boo-king-king.workers.dev`） |
+| 後端 API | [`boo-king-king-backend`](https://github.com/beethoreven/boo-king-king-backend) | Render（`https://boo-king-king-tutor-arthur-demo.onrender.com`） |
+| 前端網站 | [`boo-king-king-web`](https://github.com/beethoreven/boo-king-king-web) | Cloudflare Workers（`https://tutor-arthur-demo.boo-king-king.workers.dev`） |
 
 資料庫是 Neon Postgres，開在 **ap-southeast-1（Singapore）**，與 Render 同區。這不是效能微調而是前提：姊妹專案 zh-cn-to-tw 實測，兩端跨區時單次查詢 1.76 秒，同區後 0.03 秒，差 59 倍。本專案上線後實測 `/api/ready` 為 0.21 秒，符合同區預期。
 
@@ -89,7 +89,7 @@ Google Cloud Console → Credentials → **Create OAuth client ID** → 類型�
 ```
 http://localhost:5173
 http://127.0.0.1:5173
-https://tutor-arthur.boo-king-king.workers.dev
+https://tutor-arthur-demo.boo-king-king.workers.dev
 ```
 
 ★ 結尾**不要**加斜線。
@@ -102,6 +102,7 @@ https://tutor-arthur.boo-king-king.workers.dev
 
 | 欄位 | 值 |
 |---|---|
+| Name | `boo-king-king-tutor-arthur-demo`（決定 onrender.com 網址，建立後改名也改不掉） |
 | Region | **Singapore** |
 | Branch | `main` |
 | Build Command | `pip install -r requirements.txt` |
@@ -121,7 +122,7 @@ https://tutor-arthur.boo-king-king.workers.dev
 
 | 欄位 | 值 |
 |---|---|
-| Project name | `boo-king-king-web` |
+| Project name | `tutor-arthur-demo`（＝ `wrangler.jsonc` 的 `name`，不一致會建置失敗） |
 | **Build command** | **留空**（純靜態，沒有建置步驟） |
 | Deploy command | `npx wrangler deploy`（預設值） |
 | Builds for non-production branches | **取消勾選**（只有一條 main） |
@@ -134,12 +135,13 @@ https://tutor-arthur.boo-king-king.workers.dev
 
 1. **Render** 的 `ALLOWED_ORIGINS` = 前端網址
 2. **Google OAuth** 的授權來源加上前端網址
-3. **`index.html`** 的 `__BOO_KING_KING_API_BASE__` = 後端網址，改完 `git push`，Cloudflare 會自動重新部署
+3. **`index.html`** 的 `__BOO_KING_KING_API_HOST__` = 後端網址、`__BOO_KING_KING_VARIANT__` = Render 上的 `VARIANT`，改完 `git push`，Cloudflare 會自動重新部署
 
 #### Part G. 環境變數總覽（Render）
 
 | 變數 | 必填 | 說明 |
 |---|---|---|
+| `VARIANT` | ✅ | 部署識別，demo 是 `tutor-arthur-demo`。決定後端接受哪個 `/v/<variant>` 前綴，沒設定**啟動就失敗** |
 | `DATABASE_URL` | ✅ | Neon 連線字串。沒設定的話後端**啟動就失敗**（刻意的，見下方報告） |
 | `GOOGLE_CLIENT_ID` | ✅ | 沒設定的話 `/auth/login` 一律回 401 |
 | `ALLOWED_ORIGINS` | ✅ | 前端網址，逗號分隔、含 `https://`、**結尾不要斜線** |
@@ -156,29 +158,29 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 #### Part H. 驗證
 
 ```bash
-curl https://boo-king-king-tutor-arthur.onrender.com/api/health
+curl https://boo-king-king-tutor-arthur-demo.onrender.com/api/health
 ```
 預期 `{"status":"ok"}`。這支**刻意不碰資料庫**，所以它能分辨「服務掛了」與「資料庫比較慢」。
 
 ```bash
-curl https://boo-king-king-tutor-arthur.onrender.com/api/ready
+curl https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/ready
 ```
 預期 `{"status":"ok","database":"ok"}`。這支會連資料庫。
 
 CORS 是否設對：
 
 ```bash
-curl -i -X OPTIONS https://boo-king-king-tutor-arthur.onrender.com/api/mmg \
-  -H "Origin: https://tutor-arthur.boo-king-king.workers.dev" \
+curl -i -X OPTIONS https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/mmg \
+  -H "Origin: https://tutor-arthur-demo.boo-king-king.workers.dev" \
   -H "Access-Control-Request-Method: GET"
 ```
-回應要含 `access-control-allow-origin: https://tutor-arthur.boo-king-king.workers.dev`。
+回應要含 `access-control-allow-origin: https://tutor-arthur-demo.boo-king-king.workers.dev`。
 沒有這一行就是 `ALLOWED_ORIGINS` 填錯，最常見的是結尾多一個斜線。
 
 **瀏覽器端驗證**：打開前端，在主控台執行
 
 ```js
-fetch(window.__BOO_KING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
+fetch(`${window.__BOO_KING_KING_API_HOST__}/v/${window.__BOO_KING_KING_VARIANT__}/api/mmg`).then(r => r.status)
 ```
 
 得到 **401 就是對的**——那代表請求成功穿過 CORS 到達後端，只是沒帶登入憑證。
@@ -241,7 +243,7 @@ fetch(window.__BOO_KING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
 
 | | 工作 1：保活 | 工作 2：每日任務 |
 |---|---|---|
-| URL | `<backend>/api/health` | `<backend>/api/jobs/daily` |
+| URL | `<backend>/api/health` | `<backend>/v/<variant>/api/jobs/daily` |
 | 方法 | GET | **POST** |
 | 排程 | `*/10 * * * *` | `0 0 * * *` |
 | 標頭 | 不用 | `X-Job-Token: <JOB_TOKEN>` |
@@ -258,7 +260,7 @@ Neon 一次，直接把每月 100 CU-hours 燒光。
 
 | | 工作 3：每週遞減 |
 |---|---|
-| URL | `<backend>/api/jobs/weekly` |
+| URL | `<backend>/v/<variant>/api/jobs/weekly` |
 | 方法 | **POST** |
 | 排程 | `0 8 * * 1`（每週一上午 8 點） |
 | 標頭 | `X-Job-Token: <JOB_TOKEN>` |
@@ -276,7 +278,7 @@ instance-hours、還大概率留下一筆逾時的失敗紀錄，而換到的東
 ##### 驗證
 
 ```bash
-curl -X POST https://boo-king-king-tutor-arthur.onrender.com/api/jobs/weekly \
+curl -X POST https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/jobs/weekly \
   -H "X-Job-Token: <你的 JOB_TOKEN>"
 ```
 
@@ -341,7 +343,7 @@ workspace，那時一個 workspace 只跑一個服務，上面的共用問題不
 
 | | 工作 1：暖機 | 工作 2：每日任務 |
 |---|---|---|
-| URL | `<backend>/api/health` | `<backend>/api/jobs/daily` |
+| URL | `<backend>/api/health` | `<backend>/v/<variant>/api/jobs/daily` |
 | 方法 | GET | **POST** |
 | 排程 | `50,55 23 * * *` | `0 0 * * *` |
 | 標頭 | 不用 | `X-Job-Token: <JOB_TOKEN>` |
@@ -380,7 +382,7 @@ curl 一個都測不出來，只會在第一次排程執行時失敗，而排程
 ##### 驗證
 
 ```bash
-curl -X POST https://boo-king-king-tutor-arthur.onrender.com/api/jobs/daily \
+curl -X POST https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/jobs/daily \
   -H "X-Job-Token: <你的 JOB_TOKEN>"
 ```
 
@@ -472,7 +474,8 @@ advisory lock 是交易層級的，呼叫端 commit 時自動釋放，就算行�
 4. 到 cron-job.org 加那家店的排程（見 Part I）——**這一步很容易漏，漏了不會有任何錯誤訊息**，只會讓場次狀態慢慢失準、候補永遠不過期
 
 ★ 排程可以全部設在同一個 cron-job.org 帳號，不必跟著店家分（理由見 Part I）。快取不行。
-★ 不同帳號 = 各自一份免費額度（Render 750 instance-hours、Neon 100 CU-hours 都是各自算）。
+★ 不需要另開帳號：Neon 額度按 project 算，Render 的 750 instance-hours 按 **workspace** 算——同一個登入可以開多個 workspace。**兩個服務放在同一個 workspace 會共用那 750 小時**，兩個都保活一定超過，超過的懲罰是整個 workspace 的免費服務停到下個月。所以每家店一個 workspace。
+★ 每家店要有自己的 `VARIANT`，前端 `index.html` 的 `__BOO_KING_KING_VARIANT__` 填同一個值。
 ★ **先推步經徑，確認沒問題再推其他店。** Render 可以逐個 service 關掉自動部署。一份程式碼的代價就是一次壞發布會打到所有店，這個流程是用來擋它的。
 ★ 配色與圖片的客製空間已經留好：`style.css` 的 `:root` 是一組設計 token，換配色是覆寫變數而不是改程式；`brand-mark.png` 與 `favicon.png` 是換檔。
 
@@ -494,8 +497,8 @@ boo-king-king doubles as the **demo and development environment** for this syste
 
 | Subsystem | Repo | Deployment |
 |---|---|---|
-| Backend API | [`boo-king-king-backend`](https://github.com/beethoreven/boo-king-king-backend) | Render (`https://boo-king-king-tutor-arthur.onrender.com`) |
-| Frontend | [`boo-king-king-web`](https://github.com/beethoreven/boo-king-king-web) | Cloudflare Workers (`https://tutor-arthur.boo-king-king.workers.dev`) |
+| Backend API | [`boo-king-king-backend`](https://github.com/beethoreven/boo-king-king-backend) | Render (`https://boo-king-king-tutor-arthur-demo.onrender.com`) |
+| Frontend | [`boo-king-king-web`](https://github.com/beethoreven/boo-king-king-web) | Cloudflare Workers (`https://tutor-arthur-demo.boo-king-king.workers.dev`) |
 
 The database is Neon Postgres in **ap-southeast-1 (Singapore)**, the same region as Render. This is a precondition rather than a performance tweak: measured on the sister project zh-cn-to-tw, a single query cost 1.76 s cross-region and 0.03 s same-region — a factor of 59. Measured here after deployment, `/api/ready` returns in 0.21 s, consistent with same-region.
 
@@ -573,7 +576,7 @@ Google Cloud Console → Credentials → **Create OAuth client ID** → type **W
 ```
 http://localhost:5173
 http://127.0.0.1:5173
-https://tutor-arthur.boo-king-king.workers.dev
+https://tutor-arthur-demo.boo-king-king.workers.dev
 ```
 
 ★ **No** trailing slash.
@@ -586,6 +589,7 @@ https://tutor-arthur.boo-king-king.workers.dev
 
 | Field | Value |
 |---|---|
+| Name | `boo-king-king-tutor-arthur-demo` (fixes the onrender.com URL; renaming later does not change it) |
 | Region | **Singapore** |
 | Branch | `main` |
 | Build Command | `pip install -r requirements.txt` |
@@ -605,7 +609,7 @@ Left sidebar **Compute → Workers & Pages → "Create application"** (top right
 
 | Field | Value |
 |---|---|
-| Project name | `boo-king-king-web` |
+| Project name | `tutor-arthur-demo` (= `name` in `wrangler.jsonc`; a mismatch fails the build) |
 | **Build command** | **Leave empty** (static site, no build step) |
 | Deploy command | `npx wrangler deploy` (default) |
 | Builds for non-production branches | **Uncheck** (there is only `main`) |
@@ -618,12 +622,13 @@ Once both URLs exist, go back and fill in three places. **Miss any one and login
 
 1. **Render**'s `ALLOWED_ORIGINS` = the frontend URL
 2. **Google OAuth** authorized origins gains the frontend URL
-3. **`index.html`**'s `__BOO_KING_KING_API_BASE__` = the backend URL, then `git push`; Cloudflare redeploys automatically
+3. **`index.html`**'s `__BOO_KING_KING_API_HOST__` = the backend URL and `__BOO_KING_KING_VARIANT__` = the `VARIANT` set on Render, then `git push`; Cloudflare redeploys automatically
 
 #### Part G. Environment variables (Render)
 
 | Variable | Required | Notes |
 |---|---|---|
+| `VARIANT` | ✅ | Deployment id; the demo is `tutor-arthur-demo`. Decides which `/v/<variant>` prefix the backend accepts; missing means it **fails to start** |
 | `DATABASE_URL` | ✅ | Neon connection string. Missing means the backend **fails to start** — deliberately, see the report below |
 | `GOOGLE_CLIENT_ID` | ✅ | Missing means `/auth/login` always returns 401 |
 | `ALLOWED_ORIGINS` | ✅ | Frontend URL; comma-separated, include `https://`, **no trailing slash** |
@@ -640,29 +645,29 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 #### Part H. Verification
 
 ```bash
-curl https://boo-king-king-tutor-arthur.onrender.com/api/health
+curl https://boo-king-king-tutor-arthur-demo.onrender.com/api/health
 ```
 Expect `{"status":"ok"}`. This endpoint **deliberately never touches the database**, so it can distinguish "the service is down" from "the database is slow".
 
 ```bash
-curl https://boo-king-king-tutor-arthur.onrender.com/api/ready
+curl https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/ready
 ```
 Expect `{"status":"ok","database":"ok"}`. This one does hit the database.
 
 Whether CORS is right:
 
 ```bash
-curl -i -X OPTIONS https://boo-king-king-tutor-arthur.onrender.com/api/mmg \
-  -H "Origin: https://tutor-arthur.boo-king-king.workers.dev" \
+curl -i -X OPTIONS https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/mmg \
+  -H "Origin: https://tutor-arthur-demo.boo-king-king.workers.dev" \
   -H "Access-Control-Request-Method: GET"
 ```
-The response must contain `access-control-allow-origin: https://tutor-arthur.boo-king-king.workers.dev`.
+The response must contain `access-control-allow-origin: https://tutor-arthur-demo.boo-king-king.workers.dev`.
 Its absence means `ALLOWED_ORIGINS` is wrong — most often a trailing slash.
 
 **From the browser**: open the frontend and run in the console
 
 ```js
-fetch(window.__BOO_KING_KING_API_BASE__ + '/api/mmg').then(r => r.status)
+fetch(`${window.__BOO_KING_KING_API_HOST__}/v/${window.__BOO_KING_KING_VARIANT__}/api/mmg`).then(r => r.status)
 ```
 
 **401 is the correct result** — it means the request cleared CORS and reached the backend, carrying no credentials. `Failed to fetch` is what a CORS block looks like.
@@ -732,7 +737,7 @@ The 25-failure deactivation trap only applies to B.
 
 | | Job 1: keep-alive | Job 2: daily batch |
 |---|---|---|
-| URL | `<backend>/api/health` | `<backend>/api/jobs/daily` |
+| URL | `<backend>/api/health` | `<backend>/v/<variant>/api/jobs/daily` |
 | Method | GET | **POST** |
 | Schedule | `*/10 * * * *` | `0 0 * * *` |
 | Header | none | `X-Job-Token: <JOB_TOKEN>` |
@@ -751,7 +756,7 @@ wake Neon every 10 minutes and burn the whole 100 CU-hours monthly allowance.
 
 | | Job 3: weekly decay |
 |---|---|
-| URL | `<backend>/api/jobs/weekly` |
+| URL | `<backend>/v/<variant>/api/jobs/weekly` |
 | Method | **POST** |
 | Schedule | `0 8 * * 1` (Mondays, 08:00) |
 | Header | `X-Job-Token: <JOB_TOKEN>` |
@@ -772,7 +777,7 @@ for extra instance-hours, and most likely records a timeout, in exchange for not
 ##### Verification
 
 ```bash
-curl -X POST https://boo-king-king-tutor-arthur.onrender.com/api/jobs/weekly \
+curl -X POST https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/jobs/weekly \
   -H "X-Job-Token: <your JOB_TOKEN>"
 ```
 
@@ -846,7 +851,7 @@ allowance, but do not panic at being near it.
 
 | | Job 1: warm-up | Job 2: daily batch |
 |---|---|---|
-| URL | `<backend>/api/health` | `<backend>/api/jobs/daily` |
+| URL | `<backend>/api/health` | `<backend>/v/<variant>/api/jobs/daily` |
 | Method | GET | **POST** |
 | Schedule | `50,55 23 * * *` | `0 0 * * *` |
 | Header | none | `X-Job-Token: <JOB_TOKEN>` |
@@ -889,7 +894,7 @@ the token was wrong. Which is why the manual check below is not optional.
 ##### Verification
 
 ```bash
-curl -X POST https://boo-king-king-tutor-arthur.onrender.com/api/jobs/daily \
+curl -X POST https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/jobs/daily \
   -H "X-Job-Token: <your JOB_TOKEN>"
 ```
 
@@ -984,7 +989,8 @@ The code **does not change**. Create a fresh set of accounts and services for th
 4. Add that venue's schedules on cron-job.org (see Part I) — **this step is easy to forget and fails silently**; nothing errors, the session statuses just drift out of date and waitlist entries never expire
 
 ★ Schedules can all live in one cron-job.org account rather than being split per venue (reasoning in Part I). The cache cannot.
-★ Separate accounts mean separate free quotas (Render's 750 instance-hours and Neon's 100 CU-hours are both counted per account).
+★ No separate accounts are needed: Neon's quota is per project, and Render's 750 instance-hours are per **workspace** — one login can own several workspaces. **Two services in the same workspace share those 750 hours**; keeping both awake always exceeds it, and the penalty is every free service in that workspace stopping until next month. So: one workspace per venue.
+★ Each venue needs its own `VARIANT`, with the same value in `__BOO_KING_KING_VARIANT__` in the frontend's `index.html`.
 ★ **Deploy boo-king-king first, confirm it, then the rest.** Render allows disabling auto-deploy per service. The price of a single codebase is that one bad release reaches every venue; this procedure is what holds that back.
 ★ Room for per-venue theming already exists: `style.css`'s `:root` is a set of design tokens, so changing colours means overriding variables rather than editing code, and `brand-mark.png` / `favicon.png` are file swaps.
 
