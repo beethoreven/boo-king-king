@@ -140,10 +140,15 @@ https://tutor-arthur-demo.boo-king-king.workers.dev
 
 #### Part G. 環境變數總覽（Render）
 
+這張表是**單店寫法**（一個服務一家店，demo 用的就是這個）。正式店家共用的那個
+服務 `boo-king-king-api` 用**多店家寫法**：`TENANTS=eli,tutor-arthur`，下表前五個
+每家店各一組、名稱前面加店家前綴（`ELI__DATABASE_URL`、`TUTOR_ARTHUR__JOB_TOKEN`…）。
+兩種寫法的完整說明在 backend 的 `.env.example` 與 `tenancy.py` 開頭。
+
 | 變數 | 必填 | 說明 |
 |---|---|---|
-| `VARIANT` | ✅ | 部署識別，demo 是 `tutor-arthur-demo`。決定後端接受哪個 `/v/<variant>` 前綴，沒設定**啟動就失敗** |
-| `DATABASE_URL` | ✅ | Neon 連線字串。沒設定的話後端**啟動就失敗**（刻意的，見下方報告） |
+| `VARIANT` | ✅ | 店家識別，demo 是 `tutor-arthur-demo`。決定後端接受哪個 `/v/<variant>` 前綴，沒設定**啟動就失敗**（多店家寫法改用 `TENANTS`） |
+| `DATABASE_URL` | ✅ | Neon 連線字串。沒設定的話後端**啟動就失敗**（刻意的，見下方報告）。用 Neon 給的**直連**網址（主機名稱沒有 `-pooler` 的那個） |
 | `GOOGLE_CLIENT_ID` | ✅ | 沒設定的話 `/auth/login` 一律回 401 |
 | `ALLOWED_ORIGINS` | ✅ | 前端網址，逗號分隔、含 `https://`、**結尾不要斜線** |
 | `JOB_TOKEN` | ✅ | 每日排程與 `/internal/idle-gap-stats` 的通行證。沒設定那兩支一律 503 |
@@ -164,9 +169,11 @@ curl https://boo-king-king-tutor-arthur-demo.onrender.com/api/health
 預期 `{"status":"ok"}`。這支**刻意不碰資料庫**，所以它能分辨「服務掛了」與「資料庫比較慢」。
 
 ```bash
-curl https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/ready
+curl https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/ready \
+  -H "X-Job-Token: <這家店的 JOB_TOKEN>"
 ```
-預期 `{"status":"ok","database":"ok"}`。這支會連資料庫。
+預期 `{"status":"ok","database":"ok"}`。這支會連資料庫，所以要帶通行證（2026-10-25 起）：
+誰都能打的話，每 5 分鐘打一次就能讓那家店的 Neon 永遠不睡、把月額度用光。
 
 CORS 是否設對：
 
@@ -468,19 +475,22 @@ advisory lock 是交易層級的，呼叫端 commit 時自動釋放，就算行�
 
 ### 之後每加一家店
 
-後端程式碼**不動**，前端看功能組態：跟 `main`（步經徑）一樣就直接用 `main`，有拔掉功能就從**組態相同的那條分支**分出來、只換品牌。目前的分支：`main`＝demo（步經徑）、`eli`、`tutor-arthur`（功能跟 eli 相同、品牌是步經徑）。之後 `main` 的修改要合進每一條分支。
+後端程式碼**不動**，也**不用開新的 Render 服務**：正式店家全部共用一個後端服務 `boo-king-king-api`（2026-10-25 起），依網址前綴 `/v/<店家>` 連各自的資料庫。demo 是例外，它是自己獨立的服務（單店寫法、自動部署），當測試站用。
 
-新開一組屬於那家店的帳號與服務：
+前端看功能組態：跟 `main`（步經徑）一樣就直接用 `main`，有拔掉功能就從**組態相同的那條分支**分出來、只換品牌。目前的分支：`main`＝demo（步經徑）、`eli`、`tutor-arthur`（功能跟 eli 相同、品牌是步經徑）。之後 `main` 的修改要合進每一條分支。
 
-1. 那家店自己的 Google 帳號 → 自己的 Neon project（Singapore）
-2. 自己的 Render service，**指向同一個 repo、同一條 `main`**，只有環境變數不同
-3. 自己的 Cloudflare Worker，Production branch 選那家店的分支。★ 接上 Git 之後不會自己建置，要那條分支再 push 一次（可以是空 commit）
-4. 到 cron-job.org 加那家店的排程（見 Part I）——**這一步很容易漏，漏了不會有任何錯誤訊息**，只會讓場次狀態慢慢失準、候補永遠不過期
+新開一家店要做的事：
 
-★ 排程可以全部設在同一個 cron-job.org 帳號，不必跟著店家分（理由見 Part I）。快取不行。
-★ 不需要另開帳號：Neon 額度按 project 算，Render 的 750 instance-hours 按 **workspace** 算——同一個登入可以開多個 workspace。**兩個服務放在同一個 workspace 會共用那 750 小時**，兩個都保活一定超過，超過的懲罰是整個 workspace 的免費服務停到下個月。所以每家店一個 workspace。
-★ 每家店要有自己的 `VARIANT`，前端 `index.html` 的 `__BOO_KING_KING_VARIANT__` 填同一個值。
-★ **先推步經徑，確認沒問題再推其他店。** Render 可以逐個 service 關掉自動部署。一份程式碼的代價就是一次壞發布會打到所有店，這個流程是用來擋它的。
+1. 那家店自己的 Neon project（Singapore）
+2. 共用服務 `boo-king-king-api` 加環境變數：`TENANTS` 後面加上店家識別，再加一組 `<前綴>__DATABASE_URL`、`<前綴>__GOOGLE_CLIENT_ID`、`<前綴>__ALLOWED_ORIGINS`、`<前綴>__JOB_TOKEN`（有開 LINE 再加 `<前綴>__LINE_CHANNEL_SECRET`、`<前綴>__LINE_CHANNEL_ACCESS_TOKEN`）。★ 存檔會重新啟動服務，所有店家會斷線幾十秒，找沒人用的時間做。設定寫錯服務會起不來（Render 會保留舊版本），照錯誤訊息改就好
+3. Google OAuth client（見 Part C），授權來源填這家店的前端網址
+4. 自己的 Cloudflare Worker，Production branch 選那家店的分支。★ 接上 Git 之後不會自己建置，要那條分支再 push 一次（可以是空 commit）
+5. 前端 `index.html`：`__BOO_KING_KING_API_HOST__` 填 `https://boo-king-king-api.onrender.com`，`__BOO_KING_KING_VARIANT__` 填店家識別（跟 `TENANTS` 裡的一字不差）
+6. 到 cron-job.org 加那家店的每日、每週排程（見 Part I），網址帶 `/v/<店家>/` 前綴、header 帶**這家店的** `JOB_TOKEN`——**這一步很容易漏，漏了不會有任何錯誤訊息**，只會讓場次狀態慢慢失準、候補永遠不過期。保活不用加：共用服務只要一支保活
+
+★ 排程可以全部設在同一個 cron-job.org 帳號，不必跟著店家分（理由見 Part I）。快取不行——快取一律按店家分開，由測試強制（見 backend 的 `tenancy.py`）。
+★ Render 的 750 instance-hours 按 **workspace** 算，**兩個保活的服務放在同一個 workspace 一定超過**，超過的懲罰是整個 workspace 的免費服務停到下個月。共用服務自己一個 workspace、一支保活；demo 不保活，可以放在別的 workspace。
+★ **先推 demo（自動部署），確認沒問題再到 Render 手動部署共用服務。** 一次部署會同時打到所有正式店家，這個流程是用來擋它的。
 ★ 配色與圖片的客製空間已經留好：`style.css` 的 `:root` 是一組設計 token，換配色是覆寫變數而不是改程式；`brand-mark.png` 與 `favicon.png` 是換檔。
 
 ### 已知限制
@@ -631,6 +641,8 @@ Once both URLs exist, go back and fill in three places. **Miss any one and login
 
 #### Part G. Environment variables (Render)
 
+This table is the **single-venue format** (one service, one venue — what the demo uses). The shared service for live venues, `boo-king-king-api`, uses the **multi-venue format**: `TENANTS=eli,tutor-arthur`, with the first five rows below set once per venue under a venue prefix (`ELI__DATABASE_URL`, `TUTOR_ARTHUR__JOB_TOKEN`, …). Both formats are documented in the backend's `.env.example` and at the top of `tenancy.py`.
+
 | Variable | Required | Notes |
 |---|---|---|
 | `VARIANT` | ✅ | Deployment id; the demo is `tutor-arthur-demo`. Decides which `/v/<variant>` prefix the backend accepts; missing means it **fails to start** |
@@ -655,9 +667,10 @@ curl https://boo-king-king-tutor-arthur-demo.onrender.com/api/health
 Expect `{"status":"ok"}`. This endpoint **deliberately never touches the database**, so it can distinguish "the service is down" from "the database is slow".
 
 ```bash
-curl https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/ready
+curl https://boo-king-king-tutor-arthur-demo.onrender.com/v/tutor-arthur-demo/api/ready \
+  -H "X-Job-Token: <that venue's JOB_TOKEN>"
 ```
-Expect `{"status":"ok","database":"ok"}`. This one does hit the database.
+Expect `{"status":"ok","database":"ok"}`. This one does hit the database, which is why it needs the token (since 2026-10-25): left open, one request every 5 minutes would keep that venue's Neon awake and use up the month's allowance.
 
 Whether CORS is right:
 
@@ -987,19 +1000,22 @@ An honest assessment: the risk this actually removes in this system is **small**
 
 ### Adding each additional venue
 
-The backend code **does not change**. The frontend depends on the feature configuration: identical to `main` (步經徑) means using `main` as is; with features removed, branch off **the branch with the same configuration** and change only the branding. Current branches: `main` = the demo (步經徑), `eli`, `tutor-arthur` (eli's features, 步經徑's branding). Every change on `main` must then be merged into each branch.
+The backend code **does not change**, and **no new Render service is needed**: since 2026-10-25 all live venues share one backend service, `boo-king-king-api`, which picks each venue's own database from the `/v/<venue>` URL prefix. The demo is the exception — its own single-venue service, auto-deployed, used as staging.
 
-Create a fresh set of accounts and services for that venue:
+The frontend depends on the feature configuration: identical to `main` (步經徑) means using `main` as is; with features removed, branch off **the branch with the same configuration** and change only the branding. Current branches: `main` = the demo (步經徑), `eli`, `tutor-arthur` (eli's features, 步經徑's branding). Every change on `main` must then be merged into each branch.
 
-1. That venue's own Google account → its own Neon project (Singapore)
-2. Its own Render service, **pointing at the same repo and the same `main`**, differing only in environment variables
-3. Its own Cloudflare Worker, with the production branch set to that venue's branch. ★ Connecting Git does not trigger a build; the branch needs one more push (an empty commit will do)
-4. Add that venue's schedules on cron-job.org (see Part I) — **this step is easy to forget and fails silently**; nothing errors, the session statuses just drift out of date and waitlist entries never expire
+Steps for a new venue:
 
-★ Schedules can all live in one cron-job.org account rather than being split per venue (reasoning in Part I). The cache cannot.
-★ No separate accounts are needed: Neon's quota is per project, and Render's 750 instance-hours are per **workspace** — one login can own several workspaces. **Two services in the same workspace share those 750 hours**; keeping both awake always exceeds it, and the penalty is every free service in that workspace stopping until next month. So: one workspace per venue.
-★ Each venue needs its own `VARIANT`, with the same value in `__BOO_KING_KING_VARIANT__` in the frontend's `index.html`.
-★ **Deploy boo-king-king first, confirm it, then the rest.** Render allows disabling auto-deploy per service. The price of a single codebase is that one bad release reaches every venue; this procedure is what holds that back.
+1. That venue's own Neon project (Singapore)
+2. On the shared service `boo-king-king-api`, add environment variables: append the venue id to `TENANTS`, then add `<PREFIX>__DATABASE_URL`, `<PREFIX>__GOOGLE_CLIENT_ID`, `<PREFIX>__ALLOWED_ORIGINS`, `<PREFIX>__JOB_TOKEN` (plus `<PREFIX>__LINE_CHANNEL_SECRET` and `<PREFIX>__LINE_CHANNEL_ACCESS_TOKEN` if it uses LINE). ★ Saving restarts the service and every venue drops for tens of seconds, so do it when nobody is using it. A misconfiguration stops the service from booting (Render keeps the old version); fix whatever the error names
+3. A Google OAuth client (Part C) with the venue's frontend URL as an authorised origin
+4. Its own Cloudflare Worker, with the production branch set to that venue's branch. ★ Connecting Git does not trigger a build; the branch needs one more push (an empty commit will do)
+5. In the frontend's `index.html`: `__BOO_KING_KING_API_HOST__` = `https://boo-king-king-api.onrender.com`, `__BOO_KING_KING_VARIANT__` = the venue id (exactly as in `TENANTS`)
+6. Add the venue's daily and weekly schedules on cron-job.org (see Part I), with the `/v/<venue>/` prefix in the URL and **that venue's** `JOB_TOKEN` in the header — **this step is easy to forget and fails silently**; nothing errors, the session statuses just drift out of date and waitlist entries never expire. No new keep-alive: the shared service needs only one
+
+★ Schedules can all live in one cron-job.org account rather than being split per venue (reasoning in Part I). The cache cannot — every cache is split per venue, enforced by tests (see the backend's `tenancy.py`).
+★ Render's 750 instance-hours are per **workspace**; **two kept-awake services in one workspace always exceed it**, and the penalty is every free service in that workspace stopping until next month. The shared service gets its own workspace and one keep-alive; the demo is not kept awake and can live elsewhere.
+★ **Push to the demo first (auto-deployed), confirm it, then deploy the shared service manually on Render.** One deploy reaches every live venue at once; this procedure is what holds that back.
 ★ Room for per-venue theming already exists: `style.css`'s `:root` is a set of design tokens, so changing colours means overriding variables rather than editing code, and `brand-mark.png` / `favicon.png` are file swaps.
 
 ### Known limitations
