@@ -136,7 +136,7 @@ https://tutor-arthur-demo.boo-king-king.workers.dev
 
 1. **Render** 的 `ALLOWED_ORIGINS` = 前端網址
 2. **Google OAuth** 的授權來源加上前端網址
-3. **`index.html`** 的 `__BOO_KING_KING_API_HOST__` = 後端網址、`__BOO_KING_KING_VARIANT__` = Render 上的 `VARIANT`，改完 `git push`，Cloudflare 會自動重新部署
+3. **`index.html`** 那段 JSON 設定裡的 `__BOO_KING_KING_API_HOST__` = 後端網址、`__BOO_KING_KING_VARIANT__` = Render 上的 `VARIANT`，改完 `git push`，Cloudflare 會自動重新部署。★ 後端網址還要在前端 `_headers` 的 `connect-src` 與 `img-src` 裡（共用後端與 demo 的兩個已經列了），否則瀏覽器會擋下所有 API 請求；前端的 `node --test` 會比對這兩處
 
 #### Part G. 環境變數總覽（Render）
 
@@ -485,7 +485,7 @@ advisory lock 是交易層級的，呼叫端 commit 時自動釋放，就算行�
 2. 共用服務 `boo-king-king-api` 加環境變數：`TENANTS` 後面加上店家識別，再加一組 `<前綴>__DATABASE_URL`、`<前綴>__GOOGLE_CLIENT_ID`、`<前綴>__ALLOWED_ORIGINS`、`<前綴>__JOB_TOKEN`（有開 LINE 再加 `<前綴>__LINE_CHANNEL_SECRET`、`<前綴>__LINE_CHANNEL_ACCESS_TOKEN`）。★ 存檔會重新啟動服務，所有店家會斷線幾十秒，找沒人用的時間做。設定寫錯服務會起不來（Render 會保留舊版本），照錯誤訊息改就好
 3. Google OAuth client（見 Part C），授權來源填這家店的前端網址
 4. 自己的 Cloudflare Worker，Production branch 選那家店的分支。★ 接上 Git 之後不會自己建置，要那條分支再 push 一次（可以是空 commit）
-5. 前端 `index.html`：`__BOO_KING_KING_API_HOST__` 填 `https://boo-king-king-api.onrender.com`，`__BOO_KING_KING_VARIANT__` 填店家識別（跟 `TENANTS` 裡的一字不差）
+5. 前端 `index.html` 那段 JSON 設定：`__BOO_KING_KING_API_HOST__` 填 `https://boo-king-king-api.onrender.com`，`__BOO_KING_KING_VARIANT__` 填店家識別（跟 `TENANTS` 裡的一字不差）。`_headers` 已經放行共用後端，不用改
 6. 到 cron-job.org 加那家店的每日、每週排程（見 Part I），網址帶 `/v/<店家>/` 前綴、header 帶**這家店的** `JOB_TOKEN`——**這一步很容易漏，漏了不會有任何錯誤訊息**，只會讓場次狀態慢慢失準、候補永遠不過期。保活不用加：共用服務只要一支保活
 
 ★ 排程可以全部設在同一個 cron-job.org 帳號，不必跟著店家分（理由見 Part I）。快取不行——快取一律按店家分開，由測試強制（見 backend 的 `tenancy.py`）。
@@ -637,7 +637,7 @@ Once both URLs exist, go back and fill in three places. **Miss any one and login
 
 1. **Render**'s `ALLOWED_ORIGINS` = the frontend URL
 2. **Google OAuth** authorized origins gains the frontend URL
-3. **`index.html`**'s `__BOO_KING_KING_API_HOST__` = the backend URL and `__BOO_KING_KING_VARIANT__` = the `VARIANT` set on Render, then `git push`; Cloudflare redeploys automatically
+3. In **`index.html`**'s JSON settings block, `__BOO_KING_KING_API_HOST__` = the backend URL and `__BOO_KING_KING_VARIANT__` = the `VARIANT` set on Render, then `git push`; Cloudflare redeploys automatically. ★ The backend URL must also be in the frontend `_headers` `connect-src` and `img-src` (the shared backend and the demo one are already listed), or the browser blocks every API request; the frontend's `node --test` cross-checks the two
 
 #### Part G. Environment variables (Render)
 
@@ -1010,7 +1010,7 @@ Steps for a new venue:
 2. On the shared service `boo-king-king-api`, add environment variables: append the venue id to `TENANTS`, then add `<PREFIX>__DATABASE_URL`, `<PREFIX>__GOOGLE_CLIENT_ID`, `<PREFIX>__ALLOWED_ORIGINS`, `<PREFIX>__JOB_TOKEN` (plus `<PREFIX>__LINE_CHANNEL_SECRET` and `<PREFIX>__LINE_CHANNEL_ACCESS_TOKEN` if it uses LINE). ★ Saving restarts the service and every venue drops for tens of seconds, so do it when nobody is using it. A misconfiguration stops the service from booting (Render keeps the old version); fix whatever the error names
 3. A Google OAuth client (Part C) with the venue's frontend URL as an authorised origin
 4. Its own Cloudflare Worker, with the production branch set to that venue's branch. ★ Connecting Git does not trigger a build; the branch needs one more push (an empty commit will do)
-5. In the frontend's `index.html`: `__BOO_KING_KING_API_HOST__` = `https://boo-king-king-api.onrender.com`, `__BOO_KING_KING_VARIANT__` = the venue id (exactly as in `TENANTS`)
+5. In the frontend's `index.html` JSON settings block: `__BOO_KING_KING_API_HOST__` = `https://boo-king-king-api.onrender.com`, `__BOO_KING_KING_VARIANT__` = the venue id (exactly as in `TENANTS`). `_headers` already allows the shared backend, no change needed
 6. Add the venue's daily and weekly schedules on cron-job.org (see Part I), with the `/v/<venue>/` prefix in the URL and **that venue's** `JOB_TOKEN` in the header — **this step is easy to forget and fails silently**; nothing errors, the session statuses just drift out of date and waitlist entries never expire. No new keep-alive: the shared service needs only one
 
 ★ Schedules can all live in one cron-job.org account rather than being split per venue (reasoning in Part I). The cache cannot — every cache is split per venue, enforced by tests (see the backend's `tenancy.py`).
