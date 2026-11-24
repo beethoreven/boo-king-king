@@ -329,9 +329,9 @@ Included Usage 那個計量器持續看，不要靠推論。
 文件與 Billing 頁講的後果不一致，八月的實測又跟兩者都不符；與其繼續推論，不如讓它
 撞一次把行為量出來。
 
-★ **這個結構是這個帳號特有的，不會延續下去。** 目前三個不相干的專案擠在同一個
-workspace，是歷史累積的結果。從第二家店開始，每家店自己一個 Google 帳號、自己一個
-workspace，那時一個 workspace 只跑一個服務，上面的共用問題不存在。
+★ **現在的結構：正式店家共用一個服務 `boo-king-king-api`，demo 另外跑自己的服務。**
+加一家店不會多一個服務，保活時數也不會跟著增加；兩個服務能不能放在同一個 workspace，
+見「之後每加一家店」。
 
 ★ **計量器量的是真實運行時間**（2026-09-01 實測：兩次讀數間隔 2.60 小時，計量器
 增加 2.61 小時，速率 1.00）。所以一個全天候保活的服務，一個月就是 744 小時——
@@ -466,7 +466,7 @@ advisory lock 是交易層級的，呼叫端 commit 時自動釋放，就算行�
 
 後端程式碼**不動**，也**不用開新的 Render 服務**：正式店家全部共用一個後端服務 `boo-king-king-api`（2026-10-25 起），依網址前綴 `/v/<店家>` 連各自的資料庫。demo 是例外，它是自己獨立的服務（單店寫法、自動部署），當測試站用。
 
-前端看功能組態：跟 `main`（步經徑）一樣就直接用 `main`，有拔掉功能就從**組態相同的那條分支**分出來、只換品牌。目前的分支：`main`＝demo（步經徑）、`eli`、`tutor-arthur`（功能跟 eli 相同、品牌是步經徑）。之後 `main` 的修改要合進每一條分支。
+前端看功能組態：跟 `main`（步經徑）一樣就直接用 `main`，有拔掉功能就從**組態相同的那條分支**分出來、只換品牌。目前的分支：`main`＝demo（步經徑）、`eli`、`tutor-arthur`（功能跟 eli 相同、品牌是步經徑）。之後 `main` 的修改要合進每一條分支；`index.html` 與 `wrangler.jsonc` 每條分支各自不同（店名、後端網址、店家識別、Google Client ID、Worker 名稱），合併遇到衝突時保留分支自己的值。
 
 新開一家店要做的事：
 
@@ -834,10 +834,10 @@ warning. The docs and the Billing page describe different consequences, and Augu
 neither; rather than keep reasoning about it, let it hit the wall once and measure the
 behaviour.
 
-★ **This arrangement is peculiar to this account and does not carry forward.** Three
-unrelated projects currently share one workspace, which is an accident of history. From the
-second venue onward each gets its own Google account and therefore its own workspace, where
-a workspace runs a single service and the sharing problem above does not arise.
+★ **The current structure: live venues share one service, `boo-king-king-api`; the demo runs
+as a service of its own.** Adding a venue adds no service, so keep-alive hours do not grow with
+the number of venues; whether the two services may share a workspace is covered under "Adding
+each additional venue".
 
 ★ **The meter counts real running time** (measured 2026-09-01: two readings 2.60 hours
 apart, 2.61 hours gained, a rate of 1.00). So a service kept alive round the clock costs 744
@@ -979,7 +979,7 @@ An honest assessment: the risk this actually removes in this system is **small**
 
 The backend code **does not change**, and **no new Render service is needed**: since 2026-10-25 all live venues share one backend service, `boo-king-king-api`, which picks each venue's own database from the `/v/<venue>` URL prefix. The demo is the exception — its own single-venue service, auto-deployed, used as staging.
 
-The frontend depends on the feature configuration: identical to `main` (步經徑) means using `main` as is; with features removed, branch off **the branch with the same configuration** and change only the branding. Current branches: `main` = the demo (步經徑), `eli`, `tutor-arthur` (eli's features, 步經徑's branding). Every change on `main` must then be merged into each branch.
+The frontend depends on the feature configuration: identical to `main` (步經徑) means using `main` as is; with features removed, branch off **the branch with the same configuration** and change only the branding. Current branches: `main` = the demo (步經徑), `eli`, `tutor-arthur` (eli's features, 步經徑's branding). Every change on `main` must then be merged into each branch; `index.html` and `wrangler.jsonc` differ per branch (venue name, backend URL, venue id, Google Client ID, Worker name), so when a merge conflicts there, keep the branch's own values.
 
 Steps for a new venue:
 
