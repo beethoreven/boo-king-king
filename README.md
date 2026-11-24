@@ -109,7 +109,7 @@ https://tutor-arthur-demo.boo-king-king.workers.dev
 | Start Command | `gunicorn --workers 2 --threads 4 --timeout 60 --bind 0.0.0.0:$PORT app:app` |
 
 ★ Start Command 必須用 gunicorn，不要用 `python app.py`（那是開發伺服器）。
-★ 連線數 = `workers × 連線池 max_size(5)`。2 個 worker 是 10 條，Neon 免費夠用。調高 workers 要一起想這個數字。
+★ 同時連線數上限 = `workers × DB_MAX_CONCURRENT`（環境變數，預設 5；見 backend 的 `db/connection.py`）。2 個 worker 最多 10 條，Neon 免費夠用。調高 workers 要一起想這個數字。
 
 #### Part E. Cloudflare 前端
 
@@ -610,7 +610,7 @@ https://tutor-arthur-demo.boo-king-king.workers.dev
 | Start Command | `gunicorn --workers 2 --threads 4 --timeout 60 --bind 0.0.0.0:$PORT app:app` |
 
 ★ The start command must use gunicorn, not `python app.py` (that is the development server).
-★ Connections = `workers × pool max_size (5)`. Two workers is ten, which the Neon free plan handles. Raising the worker count means revisiting that number.
+★ Concurrent connections are capped at `workers × DB_MAX_CONCURRENT` (an environment variable, default 5; see the backend's `db/connection.py`). Two workers means at most ten, which the Neon free plan handles. Raising the worker count means revisiting that number.
 
 #### Part E. Cloudflare frontend
 
