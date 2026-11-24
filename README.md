@@ -13,7 +13,7 @@
 | 後端 API | [`boo-king-king-backend`](https://github.com/beethoreven/boo-king-king-backend) | Render（`https://boo-king-king-tutor-arthur-demo.onrender.com`） |
 | 前端網站 | [`boo-king-king-web`](https://github.com/beethoreven/boo-king-king-web) | Cloudflare Workers（`https://tutor-arthur-demo.boo-king-king.workers.dev`） |
 
-資料庫是 Neon Postgres，開在 **ap-southeast-1（Singapore）**，與 Render 同區。這不是效能微調而是前提：姊妹專案 zh-cn-to-tw 實測，兩端跨區時單次查詢 1.76 秒，同區後 0.03 秒，差 59 倍。本專案上線後實測 `/api/ready` 為 0.21 秒，符合同區預期。
+資料庫是 Neon Postgres，開在 **ap-southeast-1（Singapore）**，與 Render 同區。這不是效能微調而是前提：後端每次用資料庫都新開一條連線，光是建立連線（TCP、TLS、密碼驗證）就要跟資料庫來回好幾趟，跨區時每一趟都要多付一次跨區的延遲。本專案上線後實測 `/api/ready` 為 0.21 秒，符合同區預期。
 
 ### 使用方式
 
@@ -319,21 +319,15 @@ project **不會**各自拿到一份額度。所以窗口要先扣掉同一個�
 超過額度不是降速，是整個 workspace 的免費服務一起停用到下個月，而 Render
 **不保證會事先通知**（文件裡沒有提到這種通知）。
 
-★ 實例：2026-08 這個帳號的三個服務分別跑了 `fireless-war-backend` 744 小時
-（整月一秒沒睡）、`zh-cn-to-tw-backend` 616 小時、`boo-king-king-backend` 20 小時，
-合計 **1,380 小時**。窗口再怎麼調都救不了這種量級——步經徑那 496 或 620 的差別，
-在這個倍數面前沒有意義，真正該處理的是那兩個服務。
-
-★ **未解的觀察，不要當成保證。** 上面那 1,380 小時是 750 的 1.8 倍，而那個月
+★ **未解的觀察，不要當成保證。** 2026-08 整個 workspace 的用量是額度的 1.8 倍，而那個月
 **既沒有被收費、也沒有被停用**。文件說會停用、Billing 頁說會收費，實際兩件都沒發生。
-這只能說明那一次沒有被執行，不能推論成以後不會。用 Monthly Included Usage 那個
-計量器持續看，不要靠推論。
+這只能說明那一次沒有被執行，不能推論成以後不會——設計時仍然照額度算，用 Monthly
+Included Usage 那個計量器持續看，不要靠推論。
 
-★ **步經徑取全天候保活（744），案主的決定。** 明知整個 workspace 早就超標而仍然
-照設，理由是這個 Render 帳號在他自己手上、代價可控，而**沒有真的爆過一次，就不會
-知道爆的時候實際發生什麼**——是停用、是收費、有沒有預警。文件與 Billing 頁講的
-後果不一致，八月的實測又跟兩者都不符；與其繼續推論，不如讓它撞一次把行為量出來。
-這是刻意的取捨，不是漏看。
+★ **步經徑是全天候保活（744），刻意不縮窗口，即使整個 workspace 已經超過額度。**
+**沒有真的爆過一次，就不會知道爆的時候實際發生什麼**——是停用、是收費、有沒有預警。
+文件與 Billing 頁講的後果不一致，八月的實測又跟兩者都不符；與其繼續推論，不如讓它
+撞一次把行為量出來。
 
 ★ **這個結構是這個帳號特有的，不會延續下去。** 目前三個不相干的專案擠在同一個
 workspace，是歷史累積的結果。從第二家店開始，每家店自己一個 Google 帳號、自己一個
@@ -342,11 +336,6 @@ workspace，那時一個 workspace 只跑一個服務，上面的共用問題不
 ★ **計量器量的是真實運行時間**（2026-09-01 實測：兩次讀數間隔 2.60 小時，計量器
 增加 2.61 小時，速率 1.00）。所以一個全天候保活的服務，一個月就是 744 小時——
 單一服務幾乎用滿整份額度。
-
-★ **超過額度未必會怎樣。** 2026-08 這個帳號三個服務合計跑了 1,380 小時，是額度的
-1.8 倍，而那個月**既沒有被收費、也沒有被停用**。文件說會停用、Billing 頁說會收費，
-兩件都沒發生。這只能說明那次沒有被執行，不能推論成以後不會——設計時仍然照額度算，
-但不必為了「就要爆了」而恐慌。
 
 **乙、不保活**（沒有壓秒需求、慢一分鐘無所謂的部署）
 
@@ -514,7 +503,7 @@ boo-king-king doubles as the **demo and development environment** for this syste
 | Backend API | [`boo-king-king-backend`](https://github.com/beethoreven/boo-king-king-backend) | Render (`https://boo-king-king-tutor-arthur-demo.onrender.com`) |
 | Frontend | [`boo-king-king-web`](https://github.com/beethoreven/boo-king-king-web) | Cloudflare Workers (`https://tutor-arthur-demo.boo-king-king.workers.dev`) |
 
-The database is Neon Postgres in **ap-southeast-1 (Singapore)**, the same region as Render. This is a precondition rather than a performance tweak: measured on the sister project zh-cn-to-tw, a single query cost 1.76 s cross-region and 0.03 s same-region — a factor of 59. Measured here after deployment, `/api/ready` returns in 0.21 s, consistent with same-region.
+The database is Neon Postgres in **ap-southeast-1 (Singapore)**, the same region as Render. This is a precondition rather than a performance tweak: the backend opens a fresh connection each time it uses the database, and establishing one (TCP, TLS, password authentication) alone takes several round trips — cross-region, every one of them pays the cross-region latency. Measured here after deployment, `/api/ready` returns in 0.21 s, consistent with same-region.
 
 ### Usage
 
@@ -831,25 +820,19 @@ margin** — going over does not throttle anything, it suspends every free servi
 workspace until the next month, and Render **does not promise a warning first** (no such
 notification is mentioned in the docs).
 
-★ A worked example: in 2026-08 this account's three services ran
-`fireless-war-backend` for 744 hours (awake every hour of the month),
-`zh-cn-to-tw-backend` for 616, and `boo-king-king-backend` for 20 — **1,380 hours** in
-total. No choice of window rescues a workspace at that scale: the difference between 496
-and 620 is noise against that multiple, and the other two services are the real problem.
+★ **An unexplained observation — do not treat it as a guarantee.** In 2026-08 the workspace
+as a whole used 1.8× the 750 allowance, and that month brought **neither a charge nor a
+suspension**. The docs say suspension, the Billing page says charges, and neither happened.
+That says the limit went unenforced once; it does not say it always will — keep planning
+against the allowance, and watch the Monthly Included Usage meter rather than reasoning
+about it.
 
-★ **An unexplained observation — do not treat it as a guarantee.** Those 1,380 hours are
-1.8× the 750 allowance, and that month brought **neither a charge nor a suspension**. The
-docs say suspension, the Billing page says charges, and neither happened. That says the
-limit went unenforced once; it does not say it always will. Watch the Monthly Included
-Usage meter rather than reasoning about it.
-
-★ **boo-king-king runs round-the-clock (744) — the owner's call.** Setting it knowing the
-workspace is already far over the allowance is deliberate: this Render account is his own, so
-the downside is bounded, and **until it actually blows up once nobody knows what blowing up
-looks like** — suspension, a charge, whether there is any warning. The docs and the Billing
-page describe different consequences, and August matched neither; rather than keep reasoning
-about it, let it hit the wall once and measure the behaviour. A considered trade-off, not an
-oversight.
+★ **boo-king-king runs round-the-clock (744) and deliberately does not narrow the window,
+even though the workspace is already over the allowance.** **Until it actually blows up
+once, nobody knows what blowing up looks like** — suspension, a charge, whether there is any
+warning. The docs and the Billing page describe different consequences, and August matched
+neither; rather than keep reasoning about it, let it hit the wall once and measure the
+behaviour.
 
 ★ **This arrangement is peculiar to this account and does not carry forward.** Three
 unrelated projects currently share one workspace, which is an accident of history. From the
@@ -859,12 +842,6 @@ a workspace runs a single service and the sharing problem above does not arise.
 ★ **The meter counts real running time** (measured 2026-09-01: two readings 2.60 hours
 apart, 2.61 hours gained, a rate of 1.00). So a service kept alive round the clock costs 744
 hours a month — one service very nearly exhausts the whole allowance.
-
-★ **Exceeding the allowance may do nothing.** In 2026-08 this account's three services ran
-1,380 hours between them, 1.8× the allowance, and that month brought **neither a charge nor a
-suspension** — the docs promise suspension, the Billing page warns of charges, and neither
-happened. That says the limit went unenforced once, not that it always will: plan against the
-allowance, but do not panic at being near it.
 
 **B. No keep-alive** (a deployment with no to-the-second releases, where a one-minute wait is fine)
 

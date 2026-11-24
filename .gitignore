@@ -9,6 +9,8 @@ design/
 # 跨 session 溝通用的臨時文件（報告、提案、討論稿）。
 scratch/
 
-# Claude Code 的個人設定（每台機器不一樣，不該共用）。
-# .claude/launch.json 是專案共用的預覽伺服器設定，那個要留在版控裡。
+# 開發工具的說明檔與設定只留在本機：跟建置、部署無關，
+# settings.local.json 還是每台機器各自不同。
+CLAUDE.md
+.claude/launch.json
 .claude/settings.local.json
